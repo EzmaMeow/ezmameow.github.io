@@ -1,0 +1,74 @@
+body {
+	color: #fb9ddf;
+	background-color: #3665E7;
+    image-rendering: pixelated;
+}
+a {
+	color: #0eebfb;
+}
+.circle-image{
+	width: 64px; /* Adjust the size as needed */
+    height: 64px; /* Ensure the height and width are equal */
+    border-radius: 50%; /* This makes the image circular */
+	border: 2px solid #3665E7; /* Adds a border around the image */
+    object-fit: cover; /* Ensures the image covers the entire area */
+}
+.text-center{
+	text-align: center;
+}
+.title {
+	color: #0eebfb;
+}
+#body_container {
+	display: flex;
+	background-color: powderblue;
+	border: 2px solid blue;
+	justify-content: center;
+	align-items: center;
+	
+	height: 98vh;
+	width: 98vw;
+	
+	background-image: url(https://64.media.tumblr.com/5c1749ecc445ee793b22b35ece2356d6/42122333c0d9099e-3e/s540x810/c7edcc8fef8713aa0f218448b5b4b8d2d88b701e.pnj);
+    background-repeat: repeat;
+    background-position: center top;
+}
+#profile_container{
+	display: flex; 
+	flex-direction: column;
+	
+	background: #771390;
+    border: 8px solid #3665E7;
+    border-radius: 8px;
+	border-image-source: url(https://64.media.tumblr.com/bdc9bb3f9b367282f8dcfa9fa6449531/3ddabba5789ce870-88/s75x75_c1/7b358485ef8cfe83db7d4424686d55195c5aafc7.png);
+	border-image-slice: 25%;
+    border-image-repeat: repeat;
+    border-image-width: 32px;
+	
+	width: 480px;
+}
+#profile_icon{
+	display: flex;
+	justify-content: center;
+
+	padding-top: 16px;
+	padding-left: 16px;
+	padding-right: 16px;
+}
+#profile_title{
+	text-align: center;
+	padding-left: 16px;
+	padding-right: 16px;
+}
+#profile_content{
+	background-color: #0cefff52;
+    border: 2px solid #3665E7;
+	padding-left: 16px;
+	padding-right: 16px;
+}
+#profile_links{
+	padding-top: 16px;
+	padding-left: 16px;
+	padding-right: 16px;
+	padding-bottom: 16px;
+}
