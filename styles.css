@@ -19,23 +19,12 @@ a {
 .title {
 	color: #0eebfb;
 }
-#body_container {
-	display: flex;
-	background-color: powderblue;
-	border: 2px solid blue;
-	justify-content: center;
-	align-items: center;
-	
-	height: 98vh;
-	width: 98vw;
-	
-	background-image: url(https://64.media.tumblr.com/5c1749ecc445ee793b22b35ece2356d6/42122333c0d9099e-3e/s540x810/c7edcc8fef8713aa0f218448b5b4b8d2d88b701e.pnj);
-    background-repeat: repeat;
-    background-position: center top;
-}
-#profile_container{
+.info_container{
 	display: flex; 
 	flex-direction: column;
+	
+	height: fit-content;
+	
 	
 	background: #771390;
     border: 8px solid #3665E7;
@@ -46,8 +35,13 @@ a {
     border-image-width: 32px;
 	
 	width: 480px;
+	
+	margin-top: 10vh;
+	margin-left: 8px;
+	margin-right: 8px;
+	margin-bottom: 8px;
 }
-#profile_icon{
+.profile_icon{
 	display: flex;
 	justify-content: center;
 
@@ -55,20 +49,36 @@ a {
 	padding-left: 16px;
 	padding-right: 16px;
 }
-#profile_title{
+.info_title{
 	text-align: center;
 	padding-left: 16px;
 	padding-right: 16px;
 }
-#profile_content{
+.info_content{
 	background-color: #0cefff52;
     border: 2px solid #3665E7;
 	padding-left: 16px;
 	padding-right: 16px;
 }
-#profile_links{
+.info_links{
 	padding-top: 16px;
 	padding-left: 16px;
 	padding-right: 16px;
 	padding-bottom: 16px;
+}
+
+#body_container {
+	display: flex;
+	background-color: powderblue;
+	border: 2px solid blue;
+	justify-content: center;
+	flex-wrap: wrap;
+	
+
+	width: 98vw;
+	
+	background-image: url(https://64.media.tumblr.com/5c1749ecc445ee793b22b35ece2356d6/42122333c0d9099e-3e/s540x810/c7edcc8fef8713aa0f218448b5b4b8d2d88b701e.pnj);
+    background-repeat: repeat;
+    background-position: center top;
+	
 }
