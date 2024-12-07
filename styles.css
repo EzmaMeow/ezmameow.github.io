@@ -2,6 +2,9 @@ body {
 	color: #fb9ddf;
 	background-color: #3665E7;
     image-rendering: pixelated;
+	
+	margin: 0.25%;
+	height:100%;
 }
 a {
 	color: #0eebfb;
@@ -34,12 +37,12 @@ a {
     border-image-repeat: repeat;
     border-image-width: 32px;
 	
-	width: 480px;
+	width:400px;
 	
-	margin-top: 10vh;
-	margin-left: 8px;
-	margin-right: 8px;
-	margin-bottom: 8px;
+	margin-top: 2%;
+	margin-left: 0.25%;
+	margin-right: 0.25%;
+	margin-bottom: 2%;
 }
 .profile_icon{
 	display: flex;
@@ -74,11 +77,15 @@ a {
 	justify-content: center;
 	flex-wrap: wrap;
 	
-
-	width: 98vw;
+    
 	
 	background-image: url(https://64.media.tumblr.com/5c1749ecc445ee793b22b35ece2356d6/42122333c0d9099e-3e/s540x810/c7edcc8fef8713aa0f218448b5b4b8d2d88b701e.pnj);
     background-repeat: repeat;
     background-position: center top;
+	
+	padding-top: 2%;
+	padding-left: 2%;
+	padding-right: 2%;
+	padding-bottom: 2%;
 	
 }
