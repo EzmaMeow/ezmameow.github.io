@@ -103,6 +103,14 @@ a {
 	padding-left: 16px;
 	padding-right: 16px;
 }
+.info_content.media{
+	align-self: center;
+	padding-top: 16px;
+	padding-bottom: 16px;
+}
+.max_image{
+	width:320px;
+}
 .info_links{
 	padding-top: 16px;
 	padding-left: 16px;
