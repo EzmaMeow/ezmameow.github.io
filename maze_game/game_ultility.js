@@ -75,7 +75,7 @@ export function line_supercover(start, end) {
 }
 
 //returns the grid coords of the cell.
-export function get_cell_coords(position,cell_size) {
+export function get_cell_coords(position, cell_size) {
     let cell_position = new Vector3(
         position.x / cell_size.x,
         position.y / cell_size.y,
@@ -85,7 +85,7 @@ export function get_cell_coords(position,cell_size) {
     return cell_position;
 }
 //returns the position of the cell. May need to offset it by the origns to get the desired position
-export function get_cell_position(cell_coords,cell_size) {
+export function get_cell_position(cell_coords, cell_size) {
     let world_position = new Vector3(
         cell_coords.x * cell_size.x,
         cell_coords.y * cell_size.y,
@@ -94,5 +94,14 @@ export function get_cell_position(cell_coords,cell_size) {
     return world_position;
 }
 
+export function is_vector_valid(vector) {
+    if (vector) {
+        if (Number.isFinite(vector.x) && Number.isFinite(vector.y) && Number.isFinite(vector.z)) {
+            return true;
+        }
+    }
+    return false;
+}
 
-export default { line_supercover, get_step_direction, get_abs_distance, get_cell_coords, get_cell_position }
+
+export default { line_supercover, get_step_direction, get_abs_distance, get_cell_coords, get_cell_position, is_vector_valid }

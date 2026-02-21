@@ -81,7 +81,7 @@ export class Level extends THREE.Scene {
     //TODO: allow this to be set, but would need to:
     //update all cache object base off of it 
     //rebuild the world and adjust all object to the new positions
-    #cell_size = new THREE.Vector3(1.0, 2.0, 1.0);
+    #cell_size = new THREE.Vector3(2.0, 2.0, 2.0);
     //static ids are reserve strings
     static_object_ids = ['north_border', 'south_border', 'east_border', 'west_border', 'floor', 'ceil'];
     static_objects = {};
@@ -100,19 +100,19 @@ export class Level extends THREE.Scene {
     maze_mesh = null;
     get default_xborder_geo() {
         if (this.#default_xborder_geo == null) {
-            this.#default_xborder_geo = new THREE.BoxGeometry((this.level_image.image.height + 0.0) * this.#cell_size.x, this.#cell_size.y, this.#cell_size.z);
+            this.#default_xborder_geo = new THREE.BoxGeometry((this.level_image.image.height) * this.#cell_size.x, this.#cell_size.y, this.#cell_size.z);
         }
         return this.#default_xborder_geo
     }
     get default_zborder_geo() {
         if (this.#default_zborder_geo == null) {
-            this.#default_zborder_geo = new THREE.BoxGeometry(this.#cell_size.x, this.#cell_size.y, (this.level_image.image.width + 0.0) * this.#cell_size.z);
+            this.#default_zborder_geo = new THREE.BoxGeometry(this.#cell_size.x, this.#cell_size.y, (this.level_image.image.width) * this.#cell_size.z);
         }
         return this.#default_zborder_geo
     }
     get default_area_geo() {
         if (this.#default_area_geo == null) {
-            this.#default_area_geo = new THREE.PlaneGeometry(this.level_image.image.height, this.level_image.image.width);
+            this.#default_area_geo = new THREE.PlaneGeometry(this.level_image.image.height * this.#cell_size.x, this.level_image.image.width* this.#cell_size.z);
         }
         return this.#default_area_geo
     }
@@ -125,10 +125,12 @@ export class Level extends THREE.Scene {
     }
 
     get_cell_position(position) {
+        //need to handle y just in case. the level is y up from 0 instead of center at 0 to make things easier
+        //so the position may need to have this.#cell_size.y/2,0 subtracted from its y
         return Game_Utils.get_cell_coords(position,this.#cell_size);
     }
     get_cell_world_position(position) {
-        return Game_Utils.get_cell_position(position,this.#cell_size);
+        return Game_Utils.get_cell_position(position,this.#cell_size).add(new THREE.Vector3(0,this.#cell_size.y/2,0));
     }
     is_wall(pixel_info) {
         //will treat null as a wall unless need to extend pass bounds
@@ -190,9 +192,13 @@ export class Level extends THREE.Scene {
         if (this.maze_mesh) {
             this.maze_mesh.geometry = this.maze_geo;
             this.maze_mesh.material = this.default_wall_mat;
+            //offset the position incase y changed
+            this.maze_mesh.position.y =this.#cell_size.y/2.0;
         }
         else {
             this.maze_mesh = new THREE.Mesh(this.maze_geo, this.default_wall_mat);
+            this.maze_mesh.name = 'maze';
+            this.maze_mesh.position.y =this.#cell_size.y/2.0;
             this.add(this.maze_mesh);
         }
 
@@ -206,28 +212,29 @@ export class Level extends THREE.Scene {
             if (border == null) {
                 border = new THREE.Mesh(this.default_xborder_geo, this.default_wall_mat);
             }
-            border.position.set(this.level_image.image.height / 2.0 - this.#cell_size.x / 2.0, 0.0, -this.#cell_size.z);
+            border.position.set(this.level_image.image.height*this.#cell_size.x / 2.0 - this.#cell_size.x / 2.0, 0.0, -this.#cell_size.z);
         }
         else if (id == this.static_object_ids[1]) {
             if (border == null) {
                 border = new THREE.Mesh(this.default_xborder_geo, this.default_wall_mat);
             }
-            border.position.set(this.level_image.image.height / 2.0 - this.#cell_size.x / 2.0, 0.0, this.level_image.image.width * this.#cell_size.z);
+            border.position.set(this.level_image.image.height*this.#cell_size.x / 2.0 - this.#cell_size.x / 2.0, 0.0, this.level_image.image.width * this.#cell_size.z);
         }
         else if (id == this.static_object_ids[2]) {
             if (border == null) {
                 border = new THREE.Mesh(this.default_zborder_geo, this.default_wall_mat);
             }
-            border.position.set(this.level_image.image.height * this.#cell_size.x, 0.0, this.level_image.image.width / 2.0 - this.#cell_size.z / 2.0);
+            border.position.set(this.level_image.image.height * this.#cell_size.x, 0.0, this.level_image.image.width*this.#cell_size.z / 2.0 - this.#cell_size.z / 2.0);
         }
         else if (id == this.static_object_ids[3]) {
             if (border == null) {
                 border = new THREE.Mesh(this.default_zborder_geo, this.default_wall_mat);
             }
-            border.position.set(-this.#cell_size.x, 0.0, this.level_image.image.width / 2.0 - this.#cell_size.z / 2.0);
+            border.position.set(-this.#cell_size.x, 0.0, this.level_image.image.width * this.#cell_size.z / 2.0 - this.#cell_size.z / 2.0);
         }
         this.static_objects[id] = border
         border.name = id;
+        border.position.y =this.#cell_size.y/2.0;
         this.add(border);
         return border;
     }
@@ -242,7 +249,7 @@ export class Level extends THREE.Scene {
         this.static_objects[this.static_object_ids[4]] = floor;
         floor.name = this.static_object_ids[4];
         floor.rotation.x = -Math.PI / 2;
-        floor.position.set(this.level_image.image.height / 2.0 - this.#cell_size.x / 2.0, -this.#cell_size.y / 2.0, this.level_image.image.width / 2.0 - this.#cell_size.z / 2.0);
+        floor.position.set(this.level_image.image.height * this.#cell_size.x  / 2.0 - this.#cell_size.x / 2.0, 0.0, this.level_image.image.width * this.#cell_size.z / 2.0 - this.#cell_size.z / 2.0);
         this.add(floor);
         return floor;
     }
@@ -257,7 +264,7 @@ export class Level extends THREE.Scene {
         this.static_objects[this.static_object_ids[5]] = ceil;
         ceil.name = this.static_object_ids[5];
         ceil.rotation.x = Math.PI / 2;
-        ceil.position.set(this.level_image.image.height / 2.0 - this.#cell_size.x / 2.0, this.#cell_size.y / 2.0, this.level_image.image.width / 2.0 - this.#cell_size.z / 2.0);
+        ceil.position.set(this.level_image.image.height * this.#cell_size.x  / 2.0 - this.#cell_size.x / 2.0, this.#cell_size.y, this.level_image.image.width * this.#cell_size.z / 2.0 - this.#cell_size.z / 2.0);
         this.add(ceil);
         return ceil;
     }
