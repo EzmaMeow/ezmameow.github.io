@@ -9,8 +9,6 @@ const canvas_body = document.getElementById("canvas_body");
 //let camera;
 //let player_light;
 let maze_game;
-console.log(Game_Utils)
-console.log(Game_Utils.line_supercover)
 
 
 //a share state about the world such as getting objects in
@@ -94,7 +92,7 @@ export class Maze_Game {
 		}
 	}
 	on_window_resize() {
-		if (!this.resize){
+		if (!this.resize) {
 			this.resize = true;
 		}
 	}
@@ -107,7 +105,7 @@ export class Maze_Game {
 		const level_image = level.level_image;
 		const player = new Player();
 		this.player = player;
-		const camera = new THREE.PerspectiveCamera(75, canvas_body.clientWidth / canvas_body.clientHeight, 0.001, 32);
+		const camera = new THREE.PerspectiveCamera(50, canvas_body.clientWidth / canvas_body.clientHeight, 0.001, 32);
 		this.camera = camera;
 		const input_state = {
 			mouseSensitivity: 0.01,
@@ -134,6 +132,8 @@ export class Maze_Game {
 		this.world_state = new World_State();
 		//maybe leave line trace as a normal function, but parts of it can be reassign
 		//would need to redesign the lookup to get an array of object
+		//also could leave it as part of the scene, but I rather split it since scene for rendering
+		//world is for collsion and maybe physics or a hook for physics
 		this.world_state.line_trace = (from_position, to_position) => {
 			//use the pass x,y,z if old point to desire new point
 			//may need to rename it and have it return an object about the collsion
@@ -154,6 +154,14 @@ export class Maze_Game {
 				let pixel_info = level_image.get_pixel_info(level_image.convert_coord_to_index(cell_position.x, cell_position.z));
 				if (level.is_wall(pixel_info)) {
 					results.collsion = true;
+					//NOTE: raycast is a bit of a pain. it could work, but require organizing mesh for performance.
+					//grid base static mesh lookup may be better, just need to request boxes from blocking grids and then
+					// find out the interction point, modify it so the player wont get stuck in the wall,
+					//and then either do another test base on the perp wall normal(against it) to slide the
+					//rest of the way. also could use old system and move in the axis not block, but improve
+					//it by limiting it to any blocking object on that axis. last info is the easy way to get
+					//the safe cell so it may be easier to waste a look up to stop the line and then grab the adj
+					//cells in that direction
 
 					//this is used to handle rare cases where speed is too great and collsion will be missed
 					//but it dose not provide a slide logic nor an impact point, but it povides the cell of collsion
@@ -204,12 +212,22 @@ function startGame() {
 	const player_light = maze_game.player.light;
 	//const debug = maze_game.input_state.debug;
 
+
+	//box test
+	const box = level.get_cell_bounds();
+	const boxHelper = new THREE.Box3Helper(box, 0xff0000); // red color
+	level.add(boxHelper);
+	console.log(box);
+	//box test end
+	
+
+
 	function loop() {
 		requestAnimationFrame(loop);
 		//let old_position = camera.position.clone();
-		let new_position = camera.position.clone();
 		let direction = new THREE.Vector3();
 		camera.getWorldDirection(direction);
+		let new_position = camera.position.clone();
 
 		if (keys["w"]) new_position.add(direction.multiplyScalar(speed));
 		if (keys["s"]) new_position.add(direction.multiplyScalar(-speed));
@@ -224,7 +242,7 @@ function startGame() {
 		if (maze_game.resize) {
 			const width = canvas_body.clientWidth;
 			const height = canvas_body.clientHeight;
-			console.log('resizing',width,height);
+			console.log('resizing', width, height);
 			camera.aspect = width / height;
 			camera.updateProjectionMatrix()
 			level.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2.0));
@@ -232,10 +250,16 @@ function startGame() {
 			maze_game.resize = false;
 		}
 
+		//box test
+		level.get_cell_bounds(level.get_cell_position(camera.position),box);
+		//box.translate(level.get_cell_world_position(level.get_cell_position(camera.position)));
+		boxHelper.updateMatrixWorld(true);
+		//box test end
+
 		level.renderer.render(level, camera);
 
 	}
-
+	
 	loop();
 }
 

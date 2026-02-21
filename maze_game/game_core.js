@@ -37,7 +37,6 @@ export class Level_Image {
 	//METHOODS
 	convert_coord_to_index(x = 0, y = 0) {
 		if (x >= this.image.width || y >= this.image.height || x < 0.0 || y < 0.0) {
-			console.log('outside range')
 			return -1
 		}
 		let id = y * this.image.width + x;
@@ -45,7 +44,6 @@ export class Level_Image {
 	}
 	get_pixel_info(index) {
 		if (index < 0 || index >= this.data.length) {
-			console.log('out of bounds')
 			return null
 		}
 		let pixel_data = { 'id': Math.floor(index / 4) };
@@ -80,6 +78,9 @@ export class Level_Image {
 export class Level extends THREE.Scene {
     static default_source_image = "maze.png";
     level_image;
+    //TODO: allow this to be set, but would need to:
+    //update all cache object base off of it 
+    //rebuild the world and adjust all object to the new positions
     #cell_size = new THREE.Vector3(1.0, 2.0, 1.0);
     //static ids are reserve strings
     static_object_ids = ['north_border', 'south_border', 'east_border', 'west_border', 'floor', 'ceil'];
@@ -115,6 +116,43 @@ export class Level extends THREE.Scene {
         }
         return this.#default_area_geo
     }
+
+    get_cell_lower_boundary(){
+        return this.#cell_size.clone().divideScalar(2).negate();
+    }
+    get_cell_upper_boundary(){
+        return this.#cell_size.clone().divideScalar(2);
+    }
+
+    get_cell_position(position) {
+        return Game_Utils.get_cell_coords(position,this.#cell_size);
+    }
+    get_cell_world_position(position) {
+        return Game_Utils.get_cell_position(position,this.#cell_size);
+    }
+    is_wall(pixel_info) {
+        //will treat null as a wall unless need to extend pass bounds
+        if (pixel_info == null) {
+            return true
+        }
+        return pixel_info.r < 128 && pixel_info.g < 128 && pixel_info.b < 128;
+    }
+    //get the cell as a box. if a box is passed, then it will reset it to the bounds
+    //if coords are provide, then it will also translate it
+    get_cell_bounds(coords = null, bounds = null){
+        if (bounds){
+            bounds.min.copy(this.get_cell_lower_boundary());
+            bounds.max.copy(this.get_cell_upper_boundary());
+        }
+        else{
+            bounds = new THREE.Box3(this.get_cell_lower_boundary(),this.get_cell_upper_boundary())
+        }
+        if (coords){
+            bounds.translate(this.get_cell_world_position(coords));
+        }
+        return bounds;
+    }
+
     build_maze() {
         const geometries = [];
         this.level_image.for_each_pixel((pixel_info) => {
@@ -158,19 +196,6 @@ export class Level extends THREE.Scene {
             this.add(this.maze_mesh);
         }
 
-    }
-    get_cell_position(position) {
-        return Game_Utils.get_cell_coords(position,this.#cell_size);
-    }
-    get_cell_world_position(position) {
-        return Game_Utils.get_cell_position(position,this.#cell_size);
-    }
-    is_wall(pixel_info) {
-        //will treat null as a wall unless need to extend pass bounds
-        if (pixel_info == null) {
-            return true
-        }
-        return pixel_info.r < 128 && pixel_info.g < 128 && pixel_info.b < 128;
     }
     #create_static_border(id) {
         let border = null;
@@ -235,9 +260,6 @@ export class Level extends THREE.Scene {
         ceil.position.set(this.level_image.image.height / 2.0 - this.#cell_size.x / 2.0, this.#cell_size.y / 2.0, this.level_image.image.width / 2.0 - this.#cell_size.z / 2.0);
         this.add(ceil);
         return ceil;
-    }
-    get_static_border(id) {
-        return this.#create_static_border(id);
     }
     get north_border() {
         return this.#create_static_border(this.static_object_ids[0]);
