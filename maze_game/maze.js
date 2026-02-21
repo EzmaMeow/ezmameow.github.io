@@ -1,13 +1,10 @@
 
 import * as THREE from 'three';
-import * as BufferGeometryUtils from "three/addons/utils/BufferGeometryUtils.js";
 import * as Game_Utils from './game_ultility.js'
 import { Level } from './game_core.js'
 
 const canvas = document.getElementById("game");
-//const renderer = new THREE.WebGLRenderer({ canvas });
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, logarithmicDepthBuffer: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
+const canvas_body = document.getElementById("canvas_body");
 
 //let camera;
 //let player_light;
@@ -34,16 +31,21 @@ export class Player extends THREE.Object3D {
 	move(direction, world_state) {
 
 	}
-	constructor() {
+	constructor(options = {}) {
 		super();
-		this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.001, 32);
+		//NOTE: the aspect ration of the camera should be handle elsewhere
+		//also may need a getter for the current active camera or have one and allow characters to possessed them if needed.
+		//this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.001, 32);
+		//this.camera = new THREE.PerspectiveCamera(75, 1.0, 0.001, 32);
+		//TODO: open a camera ref slot or add as child if move modify all children
 		this.light = new THREE.PointLight(0x3a3a4f, 0.5, 128, 1.0);
 		this.add(this.light);
 	}
 }
 
 export class Maze_Game {
-
+	//NOTE: Key events are redirected to this, but some may need to be redirected to player
+	//maybe have a return so the key call chain can stop for more complex cases
 	on_key_down(event) {
 		this.input_state.keys[event.key] = true;
 
@@ -58,11 +60,11 @@ export class Maze_Game {
 		if (event.key == "`") {
 			if (this.input_state.debug) {
 				this.input_state.debug = false;
-				this.player.camera.position.y = 0.0
+				this.camera.position.y = 0.0
 			}
 			else {
 				this.input_state.debug = true;
-				this.player.camera.position.y = 2.0
+				this.camera.position.y = 2.0
 			}
 			//let test = this.player.camera.position.clone();
 			//let direction = new THREE.Vector3();
@@ -88,16 +90,25 @@ export class Maze_Game {
 		if (this.input_state.enable_mouse) {
 			const movementX = event.movementX || event.mozMovementX || event.webkitMovementX || 0.0;
 			const movementY = event.movementY || event.mozMovementY || event.webkitMovementY || 0.0;
-			this.player.camera.rotation.y -= movementX * this.input_state.mouseSensitivity;
+			this.camera.rotation.y -= movementX * this.input_state.mouseSensitivity;
+		}
+	}
+	on_window_resize() {
+		if (!this.resize){
+			this.resize = true;
 		}
 	}
 
 	constructor() {
-		const level = new Level("maze.png"); //exposing it for callables
+		const level = new Level(canvas, "maze.png");
 		this.level = level;
+		level.renderer.setSize(canvas_body.clientWidth, canvas_body.clientHeight);
+		level.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2.0));
 		const level_image = level.level_image;
 		const player = new Player();
 		this.player = player;
+		const camera = new THREE.PerspectiveCamera(75, canvas_body.clientWidth / canvas_body.clientHeight, 0.001, 32);
+		this.camera = camera;
 		const input_state = {
 			mouseSensitivity: 0.01,
 			keys: {},
@@ -118,6 +129,8 @@ export class Maze_Game {
 		document.addEventListener('mouseup', event => this.on_mouse_up(event));
 		document.addEventListener('mousemove', event => this.on_mouse_move(event));
 
+		window.addEventListener('resize', () => this.on_window_resize());
+
 		this.world_state = new World_State();
 		//maybe leave line trace as a normal function, but parts of it can be reassign
 		//would need to redesign the lookup to get an array of object
@@ -130,18 +143,18 @@ export class Maze_Game {
 				intersection: to_position.clone(),
 			}
 			//should also get a collection of anything that intersects the from->to line
-			
+
 			if (input_state.debug) {
 				return results;
 			}
 
-			let cells = Game_Utils.line_supercover(level.get_cell_position(from_position),this.level.get_cell_position(to_position));
+			let cells = Game_Utils.line_supercover(level.get_cell_position(from_position), this.level.get_cell_position(to_position));
 			let last_pixel_info = level_image.get_pixel_info(level_image.convert_coord_to_index(from_position.x, from_position.y));
 			cells.forEach((cell_position) => {
 				let pixel_info = level_image.get_pixel_info(level_image.convert_coord_to_index(cell_position.x, cell_position.z));
 				if (level.is_wall(pixel_info)) {
 					results.collsion = true;
-					
+
 					//this is used to handle rare cases where speed is too great and collsion will be missed
 					//but it dose not provide a slide logic nor an impact point, but it povides the cell of collsion
 					//storing the last one is a cheat to reuse the x and y cell check of the safe cell
@@ -150,15 +163,15 @@ export class Maze_Game {
 					//way of handling both cases (in theroy i could set the reset axis by rounding to 0 and then adding .9 or -.9) 
 					//maybe rounding away from 0
 					//also broke
-					if (last_pixel_info == null){
+					if (last_pixel_info == null) {
 						results.intersection.copy(from_position);
 						return results
 					}
-					if (pixel_info == null){
+					if (pixel_info == null) {
 						pixel_info = last_pixel_info;
 					}
-					let x = from_position.x > to_position.x ? last_pixel_info.x -1 : last_pixel_info.x +1;
-					let y = from_position.z > to_position.z ? last_pixel_info.y -1 : last_pixel_info.y +1;
+					let x = from_position.x > to_position.x ? last_pixel_info.x - 1 : last_pixel_info.x + 1;
+					let y = from_position.z > to_position.z ? last_pixel_info.y - 1 : last_pixel_info.y + 1;
 					//need aabb for accuract intersections even if it an object the level provides. 
 					if (level.is_wall(level_image.get_pixel_info(level_image.convert_coord_to_index(x, last_pixel_info.y)))) {
 						results.intersection.x = from_position.x
@@ -187,7 +200,7 @@ function startGame() {
 	const level = maze_game.level;
 	const level_image = level.level_image;
 	const player = maze_game.player;
-	const camera = maze_game.player.camera;
+	const camera = maze_game.camera;
 	const player_light = maze_game.player.light;
 	//const debug = maze_game.input_state.debug;
 
@@ -207,7 +220,19 @@ function startGame() {
 		let collsion_results = maze_game.world_state.line_trace(camera.position, new_position);
 		camera.position.copy(collsion_results.intersection);
 		player_light.position.copy(camera.position);
-		renderer.render(level, camera);
+
+		if (maze_game.resize) {
+			const width = canvas_body.clientWidth;
+			const height = canvas_body.clientHeight;
+			console.log('resizing',width,height);
+			camera.aspect = width / height;
+			camera.updateProjectionMatrix()
+			level.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2.0));
+			level.renderer.setSize(width, height);
+			maze_game.resize = false;
+		}
+
+		level.renderer.render(level, camera);
 
 	}
 

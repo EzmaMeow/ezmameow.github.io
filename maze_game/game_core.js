@@ -161,23 +161,9 @@ export class Level extends THREE.Scene {
     }
     get_cell_position(position) {
         return Game_Utils.get_cell_coords(position,this.#cell_size);
-        let cell_position = new THREE.Vector3(
-            position.x / this.#cell_size.x,
-            position.y / this.#cell_size.y,
-            position.z / this.#cell_size.z
-        );
-        //cell_position.copy(this.#cell_size);
-        cell_position.round();
-        return cell_position;
     }
     get_cell_world_position(position) {
         return Game_Utils.get_cell_position(position,this.#cell_size);
-        let world_position = new THREE.Vector3(
-            position.x * this.#cell_size.x,
-            position.y * this.#cell_size.y,
-            position.z * this.#cell_size.z
-        );
-        return world_position;
     }
     is_wall(pixel_info) {
         //will treat null as a wall unless need to extend pass bounds
@@ -286,9 +272,32 @@ export class Level extends THREE.Scene {
     get_cell_size() {
         return this.#cell_size; //I belive vectors are ref types so setting it could break ref. getter should be editable if it is a proper ref type
     }
-    constructor(source_image = Level.default_source_image) {
+    //if levels need to be dynamicly added or removed, then this need to be called to clean up certain loose objects
+    dispose(){
+        //NOTE: not sure if this works.may need to handle meshes
+        //and call down to objects this own to do similar stuff
+        //also mats may need to be loop to dispose texture
+        //NOTICE: The idea is the level is static and not dynamic
+        //and it state should be resetable. This is here for an example
+        //as well as a fallback. NOTE: this has yet to be tested since level is fixed
+        if (this.default_wall_mat) {this.default_wall_mat.dispose();}
+        if (this.default_floor_mat) {this.default_floor_mat.dispose();}
+        if (this.default_ceil_mat) {this.default_ceil_mat.dispose();}
+        if (this.#default_xborder_geo) {this.#default_xborder_geo.dispose();}
+        if (this.#default_zborder_geo) {this.#default_zborder_geo.dispose();}
+        if (this.#default_area_geo) {this.#default_area_geo.dispose()};
+        if (this.maze_geo) {this.maze_geo.dispose()};
+
+        if (renderer && renderer instanceof THREE.WebGLRenderer) {
+            renderer.renderLists.dispose();
+        }
+
+    }
+    constructor(canvas, source_image = Level.default_source_image) {
         super();
         this.level_image = new Level_Image(source_image);
         this.background = new THREE.Color(0x444444);
+        this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, logarithmicDepthBuffer: true });
+        this.renderer.setSize(canvas.width, canvas.height);
     }
 }
