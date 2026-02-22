@@ -5,22 +5,24 @@ import { Vector3 } from 'three';
 //the desire vector class. may keep it for threejs and modify it for other projects
 
 //return a new vector. ulitity functions should try to be pure
-export function get_abs_distance(start, end) {
-    return new Vector3(
+export function get_abs_distance(start, end, target = new Vector3()) {
+    return target.set(
         Math.abs(end.x - start.x),
         Math.abs(end.y - start.y),
         Math.abs(end.z - start.z)
     )
 }
 
-export function get_step_direction(start, end) {
-    return new Vector3(
+export function get_step_direction(start, end, target = new Vector3()) {
+    return target.set(
         start.x < end.x ? 1 : -1,
         start.y < end.y ? 1 : -1,
         start.z < end.z ? 1 : -1
     )
 }
 
+//may need to use arrays if vectors have a cost
+//also could try yeild, but not use to using such things
 export function line_supercover(start, end) {
     const start_floored = start.clone().floor();
     const end_floored = end.clone().floor();
@@ -29,7 +31,7 @@ export function line_supercover(start, end) {
     //s
     const step_direction = get_step_direction(start_floored, end_floored);
 
-    let point = start_floored.clone();
+    const point = start_floored.clone();
 
     const cells = [point.clone()];
     //a
@@ -75,23 +77,20 @@ export function line_supercover(start, end) {
 }
 
 //returns the grid coords of the cell.
-export function get_cell_coords(position, cell_size) {
-    let cell_position = new Vector3(
+export function get_cell_coords(position, cell_size, target = new Vector3()){
+    return target.set(
         position.x / cell_size.x,
         position.y / cell_size.y,
         position.z / cell_size.z
-    );
-    cell_position.round();
-    return cell_position;
+    ).round();
 }
 //returns the position of the cell. May need to offset it by the origns to get the desired position
-export function get_cell_position(cell_coords, cell_size) {
-    let world_position = new Vector3(
+export function get_cell_position(cell_coords, cell_size, target = new Vector3()) {
+    return target.set(
         cell_coords.x * cell_size.x,
         cell_coords.y * cell_size.y,
         cell_coords.z * cell_size.z
     );
-    return world_position;
 }
 
 export function is_vector_valid(vector) {
