@@ -1,7 +1,7 @@
 
 import * as THREE from 'three';
 import * as Game_Utils from './game_ultility.js'
-import { Level } from './game_core.js'
+import { Level, Resource_Manager, Input_Manager } from './game_core.js'
 
 const canvas = document.getElementById("game");
 const canvas_body = document.getElementById("canvas_body");
@@ -9,14 +9,14 @@ const canvas_body = document.getElementById("canvas_body");
 //data for use with collsions. it should stay in memory, but get reset after each use
 //sometime maybe partly reset when detecting several collsions, but the old data would
 //need to be used or store before the next check
-export class Collsion_Data{
+export class Collsion_Data {
 	constructor() {
 		this.collided = false;
 		this.from = new THREE.Vector3();
 		this.to = new THREE.Vector3(); //this is the fill length. could be used to project more.
 		this.direction = new THREE.Vector3();
 		this.intersection = new THREE.Vector3();
-		this.collided_object = null; 
+		this.collided_object = null;
 	}
 }
 //a share state about the world such as getting objects in
@@ -31,13 +31,13 @@ export class World_State {
 //colliders are bounds offset by position. dynamic object need to update the position as it moves
 //also the shape is indepenent of the positions so one need to translate it with the position
 //may contain properties such as collsion layer, can slide, and physic properties
-export class Collider extends THREE.Object3D{
-	#shape = new THREE.Box3(new THREE.Vector3(),new THREE.Vector3());
+export class Collider extends THREE.Object3D {
+	#shape = new THREE.Box3(new THREE.Vector3(), new THREE.Vector3());
 	//#position = new THREE.Vector3(0,0,0);
-	set shape(value){
-		if (value) {this.#shape.copy(value);}
+	set shape(value) {
+		if (value) { this.#shape.copy(value); }
 	}
-	get shape(){
+	get shape() {
 		return this.#shape;
 	}
 	//set position(value){
@@ -47,7 +47,7 @@ export class Collider extends THREE.Object3D{
 	//	return this.#position;
 	//}
 	//dedicated getter of the shape that translate it with the position 
-	get_bounds(){
+	get_bounds() {
 		const bounds = this.shape.clone();
 		bounds.translate(this.getWorldPosition(new THREE.Vector3()))
 		//onsole.log(bounds)
@@ -55,8 +55,8 @@ export class Collider extends THREE.Object3D{
 	}
 	constructor(options = {}) {
 		super();
-		if (options['shape']) {this.shape = options['shape'];}
-		if (options['position']) {this.position.copy(options['position']);}
+		if (options['shape']) { this.shape = options['shape']; }
+		if (options['position']) { this.position.copy(options['position']); }
 
 	}
 }
@@ -73,10 +73,10 @@ export class Player extends THREE.Object3D {
 
 	constructor(options = {
 		'position': new THREE.Vector3(),
-		'collider': {'shape': new THREE.Box3(new THREE.Vector3(-0.25,-0.0,-0.25),new THREE.Vector3(0.25,1.0,0.25))}
+		'collider': { 'shape': new THREE.Box3(new THREE.Vector3(-0.25, -0.0, -0.25), new THREE.Vector3(0.25, 1.0, 0.25)) }
 	}) {
 		super();
-		if (options['position']) {this.position.copy(options['position'])}
+		if (options['position']) { this.position.copy(options['position']) }
 		//NOTE: the aspect ration of the camera should be handle elsewhere
 		//also may need a getter for the current active camera or have one and allow characters to possessed them if needed.
 		//this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.001, 32);
@@ -84,19 +84,20 @@ export class Player extends THREE.Object3D {
 		//TODO: open a camera ref slot or add as child if move modify all children
 		this.light = new THREE.PointLight(0x3a3a4f, 0.5, 128, 1.0);
 		this.add(this.light);
-		
-		this.collider = new Collider(options['collider'] ? options['collider']:{});
+
+		this.collider = new Collider(options['collider'] ? options['collider'] : {});
 		this.add(this.collider);
 	}
 }
 
 export class Maze_Game {
+	debug_mode = false;
 	//NOTE: Key events are redirected to this, but some may need to be redirected to player
 	//maybe have a return so the key call chain can stop for more complex cases
 	on_key_down(event) {
-		this.input_state.keys[event.key] = true;
+		const key = Input_Manager.input_event(event, true);
 
-		if (event.key == "l") {
+		if (key === Input_Manager.KEYS.INPUT.LIGHT) {
 			if (this.player.light.color.getHex() == 0xf8c377) {
 				this.player.light.color.setHex(0x3a3a4f);
 			}
@@ -104,22 +105,14 @@ export class Maze_Game {
 				this.player.light.color.setHex(0xf8c377);
 			}
 		}
-		if (event.key == "`") {
-			if (this.input_state.debug) {
-				this.input_state.debug = false;
-				//this.camera.quaternion.set(0,0,0,1)
-				//this.camera.position.y = 0.5 * maze_game.level.get_cell_size().y;
-				//this.camera.position.x = 0.0;
-				//this.camera.position.z = 0.0;
+		if (key === Input_Manager.KEYS.INPUT.DEBUG) {
+			if (this.debug_mode) {
+				this.debug_mode = false;
 				this.player.position.y = 0.0;
-				//this.camera.rotation.y = this.player.rotation.y;
-				
+
 			}
 			else {
-				this.input_state.debug = true;
-
-				//this.camera.quaternion.clone(this.player.quaternion)
-				//this.camera.position.y = 2.0*maze_game.level.get_cell_size().y;
+				this.debug_mode = true;
 			}
 			//let test = this.player.camera.position.clone();
 			//let direction = new THREE.Vector3();
@@ -129,7 +122,8 @@ export class Maze_Game {
 		}
 	}
 	on_key_up(event) {
-		this.input_state.keys[event.key] = false;
+		const key = Input_Manager.input_event(event, false);
+		if (key === null) { return }
 	}
 	on_mouse_up(event) {
 		if (event.button === 1) {
@@ -146,7 +140,7 @@ export class Maze_Game {
 			const movementX = event.movementX || event.mozMovementX || event.webkitMovementX || 0.0;
 			const movementY = event.movementY || event.mozMovementY || event.webkitMovementY || 0.0;
 			this.player.rotation.y -= movementX * this.input_state.mouseSensitivity;
-			
+
 		}
 	}
 	on_window_resize() {
@@ -167,11 +161,10 @@ export class Maze_Game {
 		this.camera = camera;
 		camera.position.y = 0.5 * level.get_cell_size().y //could set the camera back, but left and right clip is worst without collsion bounds
 		player.add(camera);
+		//may want to rename it to config or something since input manager handling the bulk of input. this will just handle settings
 		const input_state = {
 			mouseSensitivity: 0.01,
-			keys: {},
 			enable_mouse: false,
-			debug: false
 		};
 		this.input_state = input_state;
 		level_image.on_ready = () => {
@@ -204,10 +197,6 @@ export class Maze_Game {
 			}
 			//should also get a collection of anything that intersects the from->to line
 
-			if (input_state.debug) {
-				return results;
-			}
-
 			let cells = Game_Utils.line_supercover(level.get_cell_position(from_position), this.level.get_cell_position(to_position));
 			let last_pixel_info = level_image.get_pixel_info(level_image.convert_coord_to_index(from_position.x, from_position.y));
 			cells.forEach((cell_position) => {
@@ -231,7 +220,7 @@ export class Maze_Game {
 					}
 					let coord_x_step = from_position.x > to_position.x ? last_pixel_info.x - 1 : last_pixel_info.x + 1;
 					let coord_y_step = from_position.z > to_position.z ? last_pixel_info.y - 1 : last_pixel_info.y + 1;
-					let step_direction = Game_Utils.get_step_direction(from_position,to_position);
+					let step_direction = Game_Utils.get_step_direction(from_position, to_position);
 					let adj_pixel_info = level_image.get_pixel_info(level_image.convert_coord_to_index(coord_x_step, last_pixel_info.y))
 					if (level.is_wall(adj_pixel_info)) {
 						//the attept to set point near wall have bugs such as clipping certain corridor walls. the collsion functon may be able to solve it
@@ -242,10 +231,10 @@ export class Maze_Game {
 						//	results.intersection.x = Math.ceil(to_position.x) + 0.002;
 						//}
 						//else{
-							results.intersection.x = from_position.x
+						results.intersection.x = from_position.x
 						//}
-						
-						
+
+
 					}
 					adj_pixel_info = level_image.get_pixel_info(level_image.convert_coord_to_index(last_pixel_info.x, coord_y_step))
 					if (level.is_wall(adj_pixel_info)) {
@@ -256,7 +245,7 @@ export class Maze_Game {
 						//	results.intersection.z = Math.ceil(to_position.z) + 0.002;
 						//}
 						//else{
-							results.intersection.z = from_position.z
+						results.intersection.z = from_position.z
 						//}
 					}
 					return results;
@@ -275,7 +264,7 @@ export class Maze_Game {
 		//and if there is one, either stop and let next update handle slide or handle the slide
 		//NOTE: the collider may need to be a specail object with collider getter and properties
 		//or it can assume defualt properties if none is provided (so if a object, may need to inject the properties into the collider from the getter)
-		this.world_state.project_collison = (collider,direction,distance,results={}) => {
+		this.world_state.project_collison = (collider, direction, distance, results = {}) => {
 
 		};
 	}
@@ -289,12 +278,10 @@ function startGame(maze_game) {
 	const level = maze_game.level;
 	const player = maze_game.player;
 	const camera = maze_game.camera;
-	const input_state = maze_game.input_state;
-
 
 	//box test
 	const box = level.get_cell_bounds();
-	level.add( new THREE.Box3Helper(box, 0x008000)); // green color
+	level.add(new THREE.Box3Helper(box, 0x008000)); // green color
 
 	//reuable ref base object
 	const collsion_data = new Collsion_Data();
@@ -307,28 +294,34 @@ function startGame(maze_game) {
 		collsion_data.from.copy(player.position);
 		collsion_data.to.copy(player.position)
 		moving = false;
-
-		if (input_state.keys["w"]) {
-			collsion_data.to.add(collsion_data.direction.multiplyScalar(input_state.debug?player.speed*3:player.speed));
+		let speed_mod = Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.SHIFT) ? 2.0 : 1.0
+		if (maze_game.debug_mode) { speed_mod *= 3.0 }
+		if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.FORWARD)) {
+			collsion_data.to.add(collsion_data.direction.multiplyScalar(player.speed * speed_mod));
 			moving = true;
 		}
-		if (input_state.keys["s"]) {
+		if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.BACK)) {
 			collsion_data.direction.negate();
-			collsion_data.to.add(collsion_data.direction.multiplyScalar(input_state.debug?player.speed*3:player.speed));
+			collsion_data.to.add(collsion_data.direction.multiplyScalar(player.speed * speed_mod));
 			moving = true;
 		}
 
-		if (input_state.keys["a"]) {player.rotation.y += 0.05;}
-		if (input_state.keys["d"]) {player.rotation.y -= 0.05;}
+		if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.LEFT)) { player.rotation.y += 0.05; }
+		if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.RIGHT)) { player.rotation.y -= 0.05; }
 
-		if (input_state.keys["q"]&&input_state.debug) player.position.y += player.speed;
-		if (input_state.keys["e"]&&input_state.debug) player.position.y -= player.speed;
+		if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.UP) && maze_game.debug_mode) player.position.y += player.speed;
+		if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.DOWN) && maze_game.debug_mode) player.position.y -= player.speed;
 
 		if (moving) {
-			let collsion_results = maze_game.world_state.line_trace(collsion_data.from, collsion_data.to);
-			if (collsion_results.collsion) {
-				if (Game_Utils.is_vector_valid(collsion_results.intersection)) {
-					player.position.copy(collsion_results.intersection);
+			if (!maze_game.debug_mode) {
+				let collsion_results = maze_game.world_state.line_trace(collsion_data.from, collsion_data.to);
+				if (collsion_results.collsion) {
+					if (Game_Utils.is_vector_valid(collsion_results.intersection)) {
+						player.position.copy(collsion_results.intersection);
+					}
+				}
+				else {
+					player.position.copy(collsion_data.to);
 				}
 			}
 			else {
