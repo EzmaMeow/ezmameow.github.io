@@ -1,7 +1,34 @@
 import * as THREE from 'three';
 import * as BufferGeometryUtils from "three/addons/utils/BufferGeometryUtils.js";
-import * as Game_Utils from './game_ultility.js'
+import * as Game_Utils from './game_utility.js'
 
+export class Signal {
+    static get REMOVE() { return -1 };
+    #connections = new Set()
+    connect(callable) {
+        if (typeof callable === 'function') {
+            this.#connections.add(callable);
+            return () => this.disconnect(callable);
+        }
+    }
+    disconnect(callable) {
+        this.#connections.delete(callable);
+    }
+    emit(...args) {
+        for (const callable of this.#connections) {
+            if (callable(...args) === Signal.REMOVE) {
+                this.disconnect(callable)
+            };
+        }
+    }
+    clear() {
+        this.#connections.clear();
+    }
+    delete() {
+        this.delete = true;
+        this.clear()
+    }
+}
 
 //this class stores and links resources for the game
 //as well as manage loading (and perhaps unloading) them
@@ -14,7 +41,7 @@ export class Resource_Manager {
     //will keep texture loader as a standard var so it could be overriden per instance
     static #KEYS = Object.freeze({ //CONST string base keys
         ALL: '*', //allow some functions to process all keys if this pass as an id
-        TYPES: Object.freeze({ TEXTURE: 'texture' }) //type identification for loaders
+        TYPES: Object.freeze({ RENDERER: 'renderer', MATERIAL: 'material', GEOMETRY: 'geometry', TEXTURE: 'texture' }) //type identification for loaders
     }); //NOTE: values can be changes, but the container type is locked
     static get KEYS() { return this.#KEYS; }
 
@@ -31,13 +58,26 @@ export class Resource_Manager {
     get loading_manager() { return this.#loading_manager; }
     texture_loader = new THREE.TextureLoader(this.loading_manager);
 
+    //may use this instead of allowing a source to reduce function declartions
+    #get_type_source(type) {
+        if (Resource_Manager.KEYS.TYPES.RENDERER) { return this.#renderers }
+        if (Resource_Manager.KEYS.TYPES.MATERIAL) { return this.#materials }
+        if (Resource_Manager.KEYS.TYPES.GEOMETRY) { return this.#geometries }
+        if (Resource_Manager.KEYS.TYPES.TEXTURE) { return this.#textures }
+        return null;
+    }
+
     //set will have a flag to allow replacing the ref as well as to dispose the replaces ref
-    dispose(id, source) {
+    dispose(id, type) {
+        const source = this.#get_type_source(type);
         if (source) {
             const value = source.get(id);
             if (id === Resource_Manager.ALL_KEY) {
                 for (const [loop_key, loop_value] of source) {
                     if (loop_value) {
+                        if (type === Resource_Manager.KEYS.TYPES.RENDERER) {
+                            renderer.renderLists.dispose();
+                        }
                         loop_value.dispose();
                         source.delete(id);
                     }
@@ -45,12 +85,16 @@ export class Resource_Manager {
                 return
             }
             if (value) {
+                if (type === Resource_Manager.KEYS.TYPES.RENDERER) {
+                    renderer.renderLists.dispose();
+                }
                 value.dispose();
                 source.delete(id);
             }
         }
     }
-    set_resource(id, resource, source, override = true, dispose = true) {
+    set_resource(id, resource, type, override = true, dispose = true) {
+        const source = this.#get_type_source(type);
         if (resource && source && id !== Resource_Manager.KEYS.ALL) {
             if (source.has(id)) {
                 if (override) {
@@ -65,19 +109,20 @@ export class Resource_Manager {
         }
     }
     set_renderer(id, renderer, override = true, dispose = true) {
-        this.set_resource(id, renderer, this.#renderers, override, dispose);
+        this.set_resource(id, renderer, Resource_Manager.KEYS.TYPES.RENDERER, override, dispose);
     }
     set_material(id, material, override = true, dispose = true) {
-        this.set_resource(id, material, this.#materials, override, dispose);
+        this.set_resource(id, material, Resource_Manager.KEYS.TYPES.MATERIAL, override, dispose);
     }
     set_geometry(id, geometry, override = true, dispose = true) {
-        this.set_resource(id, geometry, this.#geometries, override, dispose);
+        this.set_resource(id, geometry, Resource_Manager.KEYS.TYPES.GEOMETRY, override, dispose);
     }
     set_texture(id, texture, override = true, dispose = true) {
-        this.set_resource(id, texture, this.#textures, override, dispose);
+        this.set_resource(id, texture, Resource_Manager.KEYS.TYPES.TEXTURE, override, dispose);
     }
 
-    get_resource(id, source, fallback = null, cache = true) {
+    get_resource(id, type, fallback = null, cache = true) {
+        const source = this.#get_type_source(type);
         if (source) {
             if (source.has(id)) {
                 return source.get(id);
@@ -89,41 +134,48 @@ export class Resource_Manager {
         return fallback;
     }
     get_renderer(id, fallback = null, cache = true) {
-        return this.get_resource(id, this.#renderers, fallback, cache);
+        return this.get_resource(id, Resource_Manager.KEYS.TYPES.RENDERER, fallback, cache);
     }
     get_material(id, fallback = null, cache = true) {
-        return this.get_resource(id, this.#materials, fallback, cache);
+        return this.get_resource(id, Resource_Manager.KEYS.TYPES.MATERIAL, fallback, cache);
     }
     get_geometry(id, fallback = null, cache = true) {
-        return this.get_resource(id, this.#geometries, fallback, cache);
+        return this.get_resource(id, Resource_Manager.KEYS.TYPES.GEOMETRY, fallback, cache);
     }
     get_texture(id, fallback = null, cache = true) {
-        return this.get_resource(id, this.#textures, fallback, cache);
+        return this.get_resource(id, Resource_Manager.KEYS.TYPES.TEXTURE, fallback, cache);
+    }
+
+    has_resource(id, type) {
+        const source = this.#get_type_source(type);
+        if (source) {
+            return source.has(id);
+        }
+        return false
     }
 
     dispose_renderers(id = '*') {
-        this.dispose(id, this.#renderers);
+        this.dispose(id, Resource_Manager.KEYS.TYPES.RENDERER);
     }
     dispose_materials(id = '*') {
-        this.dispose(id, this.#materials);
+        this.dispose(id, Resource_Manager.KEYS.TYPES.MATERIAL);
     }
     dispose_geometries(id = '*') {
-        this.dispose(id, this.#geometries);
+        this.dispose(id, Resource_Manager.KEYS.TYPES.GEOMETRY);
     }
     dispose_textures(id = '*') {
-        this.dispose(id, this.#textures);
+        this.dispose(id, Resource_Manager.KEYS.TYPES.TEXTURE);
     }
     //some disposables are static ref. They need to have their flags set true
     //and only provided if they are not needed or need to be rebuilt
-    dispose_all(include_statics = false) {
+    dispose_all(include_renderers = false) {
+
         this.dispose_geometries();
         this.dispose_materials();
         this.dispose_textures();
         //may change from a bool to an array of ids
-        if (include_statics) {
-            if (Resource_Manager.default_renderer && Resource_Manager.default_renderer instanceof THREE.WebGLRenderer && include_statics) {
-                renderer.renderLists.dispose();
-            }
+        if (include_renderers) {
+            this.dispose_renderers();
         }
     }
 
@@ -166,26 +218,28 @@ export class Resource_Manager {
 //NOTE: this should not handle input events directly. it here to remap key binds and add additional input support
 export class Input_Manager {
     static #KEYS = {
-        INPUT:{UP: 'UP', DOWN: 'DOWN', RIGHT: 'RIGHT', LEFT: 'LEFT', FORWARD: 'FORWARD', BACK: 'BACK',
-            LIGHT: 'LIGHT', DEBUG: 'DEBUG', SHIFT:'SHIFT',CONTROL:'CONTROL'},
-        KEY_STATE:{RELEASED:-1,UP:0,PRESSED:1,DOWN:2}
+        INPUT: {
+            UP: 'UP', DOWN: 'DOWN', RIGHT: 'RIGHT', LEFT: 'LEFT', FORWARD: 'FORWARD', BACK: 'BACK',
+            LIGHT: 'LIGHT', DEBUG: 'DEBUG', SHIFT: 'SHIFT', CONTROL: 'CONTROL'
+        },
+        KEY_STATE: { RELEASED: -1, UP: 0, PRESSED: 1, DOWN: 2 }
     }
     static get KEYS() { return this.#KEYS; }
     //this will store the default bindings(could update it from config) as well as infomation such as if it is pressed and the strength
     static #input_actions = {
-        [this.KEYS.INPUT.FORWARD]: {keymap:['w','arrowup']},
-        [this.KEYS.INPUT.BACK]: {keymap:['s','arrowdown']},
-        [this.KEYS.INPUT.RIGHT]: {keymap:['d','arrowright']},
-        [this.KEYS.INPUT.LEFT]: {keymap:['a','arrowleft']},
-        [this.KEYS.INPUT.UP]: {keymap:['e']},
-        [this.KEYS.INPUT.DOWN]: {keymap:['q']},
-        [this.KEYS.INPUT.LIGHT]: {keymap:['l']},
-        [this.KEYS.INPUT.DEBUG]: {keymap:['`']},
-        [this.KEYS.INPUT.SHIFT]: {keymap:['shift']},
-        [this.KEYS.INPUT.CONTROL]: {keymap:['control']}
+        [this.KEYS.INPUT.FORWARD]: { keymap: ['w', 'arrowup'] },
+        [this.KEYS.INPUT.BACK]: { keymap: ['s', 'arrowdown'] },
+        [this.KEYS.INPUT.RIGHT]: { keymap: ['d', 'arrowright'] },
+        [this.KEYS.INPUT.LEFT]: { keymap: ['a', 'arrowleft'] },
+        [this.KEYS.INPUT.UP]: { keymap: ['e'] },
+        [this.KEYS.INPUT.DOWN]: { keymap: ['q'] },
+        [this.KEYS.INPUT.LIGHT]: { keymap: ['l'] },
+        [this.KEYS.INPUT.DEBUG]: { keymap: ['`'] },
+        [this.KEYS.INPUT.SHIFT]: { keymap: ['shift'] },
+        [this.KEYS.INPUT.CONTROL]: { keymap: ['control'] }
     };
 
-    static get input_actions(){return this.#input_actions;}
+    static get input_actions() { return this.#input_actions; }
     static #input_map = new Map();
 
     static get input_map() {
@@ -198,20 +252,68 @@ export class Input_Manager {
         }
         return this.#input_map;
     }
-    static get_input_action(key){
+    static get_input_action(key) {
         return this.input_map.get(key);
     }
-    static input_event(event, pressed = true){
+    static input_event(event, pressed = true) {
         const action = this.get_input_action(event.key.toLowerCase());
-        if (action){
+        if (action) {
             this.input_actions[action].pressed = pressed;
         }
         return action
     }
-    static is_key_down(action){
+    static is_key_down(action) {
         return this.input_actions[action].pressed;
     }
 
+}
+
+//declares the basic structure of a state or a object to be observed
+export class Reactive_Object {
+    #on_change = new Signal; get on_change() { return this.#on_change; } 
+    #on_clear = new Signal; get on_clear() { return this.#on_clear; } 
+    #on_load = new Signal; get on_load() { return this.#on_load; } 
+    #on_delete = new Signal; get on_delete() { return this.#on_delete; } 
+    clear() { this.#on_clear.emit(); }
+    load() { this.on_load.emit(); }
+    delete() {
+        this.deleted = true;
+        this.clear();
+        this.on_change.delete();
+        this.on_clear.delete();
+        this.on_load.delete();
+        this.on_delete.emit();
+        this.on_delete.delete();
+    }
+}
+//NOTE:Serializable_State could exist. this would prevent storing values that would be hard to Serializalize
+export class State extends Reactive_Object {
+    #values = new Map();
+    has(key) {
+        return this.#values.has(key);
+    }
+    get(key) {
+        return this.#values.get(key);
+    }
+    set(key, value) {
+        const old_value = this.#values.get(key);
+        if (old_value !== new_value) {
+            this.#values.set(key, value);
+            this.on_change.emit(key, new_value, old_value);
+        }
+    }
+    //incase an uneeded key exists, this allow removing it. it will notify there was a change
+    //if a value existed. new value will be undefined instead of null to state it dose not exists
+    remove(key) {
+        const old_value = this.#values.get(key);
+        if (this.#values.delete()) {
+            this.on_change.emit(key, undefined, old_value);
+        }
+    }
+    clear() {
+        this.#values.clear();
+        super.clear();
+    }
 }
 
 //handles the image data of a level built from a image
@@ -321,7 +423,7 @@ export class Level extends THREE.Scene {
         return this.resources.get_geometry('zborder', new THREE.PlaneGeometry(this.#cell_size.x, this.#cell_size.y, (this.level_image.image.width) * this.#cell_size.z));
     }
     get default_area_geo() {
-        return this.resources.get_geometry('area', new THREE.PlaneGeometry(this.level_image.image.height * this.#cell_size.x, this.level_image.image.width * this.#cell_size.z));
+        return this.resources.get_resource('area', Resource_Manager.KEYS.TYPES.GEOMETRY);
     }
 
 
@@ -369,11 +471,12 @@ export class Level extends THREE.Scene {
         const geometries = [];
         //Todo: move the plane geo to geos and have a function or getter that update them
         this.level_image.for_each_pixel((pixel_info) => {
-            //should try to clone these, but also not really since they should be clean up afterwards
-            const px = new THREE.PlaneGeometry(this.#cell_size.x, this.#cell_size.y).rotateY(Math.PI / 2); // +X //left to right of int spawn facing (|->)
-            const nx = new THREE.PlaneGeometry(this.#cell_size.x, this.#cell_size.y).rotateY(-Math.PI / 2); // -X (<-|)
-            const pz = new THREE.PlaneGeometry(this.#cell_size.z, this.#cell_size.y); // +Z //(v) (south)
-            const nz = new THREE.PlaneGeometry(this.#cell_size.z, this.#cell_size.y).rotateY(Math.PI); // -Z (^) the look direction (north)
+            //cacheing these in the resources so they do not need to be manually disposed (mostly the borders handling it would be a pain to disposed). 
+            //the issue is they need to be update on image change and first time running need to create them twice plus the loop
+            const px = this.resources.get_resource('east_face', Resource_Manager.KEYS.TYPES.GEOMETRY).clone(); // +X //left to right of int spawn facing (|->)
+            const nx = this.resources.get_resource('west_face', Resource_Manager.KEYS.TYPES.GEOMETRY).clone(); // -X (<-|)
+            const pz = this.resources.get_resource('south_face', Resource_Manager.KEYS.TYPES.GEOMETRY).clone(); // +Z //(v) (south)
+            const nz = this.resources.get_resource('north_face', Resource_Manager.KEYS.TYPES.GEOMETRY).clone(); // -Z (^) the look direction (north)
             if (this.is_wall(pixel_info)) {
                 let near_pixel_info = this.level_image.get_pixel_info(this.level_image.convert_coord_to_index(pixel_info.x + 1, pixel_info.y))
                 if (!this.is_wall(near_pixel_info)) {
@@ -431,7 +534,7 @@ export class Level extends THREE.Scene {
         if (id == this.KEYS.BORDER.NORTH) {
             for (let i = 0; i < this.level_image.image.height; i++) {
                 //okay these need to be in the loop or get clone from an fixed instance(but this needs to clone the vectors too)
-                const plane = new THREE.PlaneGeometry(this.#cell_size.z, this.#cell_size.y);
+                const plane = this.resources.get_geometry('south_face', new THREE.PlaneGeometry(this.#cell_size.z, this.#cell_size.y)).clone();
                 plane.translate(i * this.#cell_size.x, 0, - this.#cell_size.z / 2);
                 geometries.push(plane);
             }
@@ -440,7 +543,7 @@ export class Level extends THREE.Scene {
         }
         else if (id == this.KEYS.BORDER.SOUTH) {
             for (let i = 0; i < this.level_image.image.height; i++) {
-                const plane = new THREE.PlaneGeometry(this.#cell_size.z, this.#cell_size.y).rotateY(Math.PI);
+                const plane = this.resources.get_geometry('north_face', new THREE.PlaneGeometry(this.#cell_size.z, this.#cell_size.y).rotateY(Math.PI)).clone();
                 plane.translate(i * this.#cell_size.x, 0, this.level_image.image.width * 2 - half_cell_size.z);
                 geometries.push(plane);
             }
@@ -449,7 +552,7 @@ export class Level extends THREE.Scene {
         }
         else if (id == this.KEYS.BORDER.EAST) {
             for (let i = 0; i < this.level_image.image.height; i++) {
-                const plane = new THREE.PlaneGeometry(this.#cell_size.x, this.#cell_size.y).rotateY(-Math.PI / 2);
+                const plane = this.resources.get_geometry('west_face', new THREE.PlaneGeometry(this.#cell_size.x, this.#cell_size.y).rotateY(-Math.PI / 2)).clone();
                 plane.translate(this.level_image.image.height * 2 - half_cell_size.x, 0, i * this.#cell_size.z);
                 geometries.push(plane);
             }
@@ -458,7 +561,7 @@ export class Level extends THREE.Scene {
         }
         else if (id == this.KEYS.BORDER.WEST) {
             for (let i = 0; i < this.level_image.image.height; i++) {
-                const plane = new THREE.PlaneGeometry(this.#cell_size.x, this.#cell_size.y).rotateY(Math.PI / 2);
+                const plane = this.resources.get_geometry('east_face', new THREE.PlaneGeometry(this.#cell_size.x, this.#cell_size.y).rotateY(Math.PI / 2)).clone();
                 plane.translate(-half_cell_size.x, 0, i * this.#cell_size.z);
                 geometries.push(plane);
             }
@@ -511,10 +614,22 @@ export class Level extends THREE.Scene {
     get west_border() { return this.#create_static_border(this.KEYS.BORDER.WEST); }
     get static_floor() { return this.#create_static_floor(); }
     get static_ceil() { return this.#create_static_ceil(); }
+
+    update_geometries() {
+        //could check and update, but bruteforcing it at the moment
+        this.resources.set_resource('east_face', new THREE.PlaneGeometry(this.#cell_size.x, this.#cell_size.y).rotateY(Math.PI / 2), Resource_Manager.KEYS.TYPES.GEOMETRY); // +X //left to right of int spawn facing (|->)
+        this.resources.set_resource('west_face', new THREE.PlaneGeometry(this.#cell_size.x, this.#cell_size.y).rotateY(-Math.PI / 2), Resource_Manager.KEYS.TYPES.GEOMETRY); // -X (<-|)
+        this.resources.set_resource('south_face', new THREE.PlaneGeometry(this.#cell_size.z, this.#cell_size.y), Resource_Manager.KEYS.TYPES.GEOMETRY); // +Z //(v) (south)
+        this.resources.set_resource('north_face', new THREE.PlaneGeometry(this.#cell_size.z, this.#cell_size.y).rotateY(Math.PI), Resource_Manager.KEYS.TYPES.GEOMETRY); // -Z (^) the look direction (north)
+
+        this.resources.set_resource('area', new THREE.PlaneGeometry(this.level_image.image.height * this.#cell_size.x, this.level_image.image.width * this.#cell_size.z), Resource_Manager.KEYS.TYPES.GEOMETRY);
+
+    }
     build() {
         //This build all the parts of the level
         //NOTE: should have the create function also reset the states
         //of the meshes to the new state of the level
+        this.update_geometries();
         this.build_maze();
         this.#create_static_border(this.KEYS.BORDER.NORTH);
         this.#create_static_border(this.KEYS.BORDER.SOUTH);

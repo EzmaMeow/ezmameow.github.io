@@ -1,7 +1,7 @@
 
 import * as THREE from 'three';
-import * as Game_Utils from './game_ultility.js'
-import { Level, Resource_Manager, Input_Manager } from './game_core.js'
+import * as Game_Utils from './game_utility.js'
+import { Level, Resource_Manager, Input_Manager, Signal, State, Reactive_Object} from './game_core.js'
 
 const canvas = document.getElementById("game");
 const canvas_body = document.getElementById("canvas_body");
@@ -161,6 +161,7 @@ export class Maze_Game {
 		this.camera = camera;
 		camera.position.y = 0.5 * level.get_cell_size().y //could set the camera back, but left and right clip is worst without collsion bounds
 		player.add(camera);
+		this.settings = new State();
 		//may want to rename it to config or something since input manager handling the bulk of input. this will just handle settings
 		const input_state = {
 			mouseSensitivity: 0.01,

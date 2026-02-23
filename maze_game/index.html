@@ -145,10 +145,10 @@
       <div id='canvas_body'>
         <canvas id="game"></canvas>
         <div class="dropdown-menu">
-          <a >This is a Test</a>
-          <a >Near Plane<input type="number" id="near_plane" min="0.0001" max="1" step="0.0001" value="0.001"></a>
-          <a >Far Plane<input type="number" id="far_plane" min="2" max="1000" step="5" value="100"></a>
-          <a >FOV<input type="number" id="fov" min="5" max="120" step="1" value="50"></a>
+          <a>This is a Test</a>
+          <a>Near Plane<input type="number" id="near_plane" min="0.0001" max="1" step="0.0001" value="0.001"></a>
+          <a>Far Plane<input type="number" id="far_plane" min="2" max="1000" step="5" value="100"></a>
+          <a>FOV<input type="number" id="fov" min="5" max="120" step="1" value="50"></a>
         </div>
       </div>
 
@@ -161,36 +161,58 @@
   <script type="module" src="maze.js"></script>
   <script type="module">
     import * as Game from './maze.js';
-    const dropdown_button = document.querySelector('.dropdown-button');
-    const dropdown_menu = document.querySelector('.dropdown-menu');
+    import { convert_to_same_type } from './game_utility.js'
 
-    const far_plane = document.getElementById('far_plane')
-    const near_plane = document.getElementById('near_plane')
-    const fov = document.getElementById('fov')
     const maze_game = new Game.Maze_Game();
 
+    //quick way to binding dom events to the game events
+    function event_router(element, event_type, handler, key) {
+      element.addEventListener("change", (event) => {
+        let new_value = event.target.value;
+        handler.on_change.emit(key, new_value);
+      });
+    }
 
-    dropdown_button.addEventListener('click', () => {
-      dropdown_menu.style.display =
-        dropdown_menu.style.display === 'block' ? 'none' : 'block';
+    //update the value of related to setting docs. It is to make sure the values
+    //are always correct since looping back here be a bit silly. any time there may be a change,
+    //this should be called. most cases at the game start be fine, but it is being called when
+    //the menu is opened
+    function update_settings() {
+      //NOTE: these might be store in a proper state if game take control of some of these values
+      //then only the player assign values should be read.
+      document.getElementById('far_plane').value = maze_game.camera.far;
+      document.getElementById('near_plane').value = maze_game.camera.near;
+      document.getElementById('fov').value = maze_game.camera.fov;
+    }
+
+    //manage the drop down buttons logic
+    const dropdown_menu = document.querySelector('.dropdown-menu');
+    document.querySelector('.dropdown-button').addEventListener('click', () => {
+      if (dropdown_menu.style.display === 'block') {
+        dropdown_menu.style.display = 'none';
+      }
+      else {
+        dropdown_menu.style.display = 'block';
+        update_settings();
+      }
     });
 
-    far_plane.value = maze_game.camera.far;
-    near_plane.value = maze_game.camera.near;
-    fov.value = maze_game.camera.fov;
-    far_plane.addEventListener('change', function () {
-      maze_game.camera.far = Number(this.value);
-      maze_game.camera.updateProjectionMatrix()
+    //this may be moved to game, but may stay for things unquie to this page
+    //that the game may not need to worry about
+    maze_game.settings.on_change.connect((key, new_value) => {
+      if (key.startsWith("camera.")) {
+        const property = key.split('.').pop();
+        if (property || property != 'camera') {
+          maze_game.camera[property] = convert_to_same_type(maze_game.camera[property], new_value);
+        }
+        maze_game.camera.updateProjectionMatrix();
+      }
     });
-    near_plane.addEventListener('change', function () {
-      maze_game.camera.near = Number(this.value);
-      maze_game.camera.updateProjectionMatrix()
-    });
-    fov.addEventListener('change', function () {
-      console.log(this.value);
-      maze_game.camera.fov = Number(this.value);
-      maze_game.camera.updateProjectionMatrix()
-    });
+
+    //route the dom events to the game evenys
+    event_router(document.getElementById('far_plane'), "change", maze_game.settings, 'camera.far');
+    event_router(document.getElementById('near_plane'), "change", maze_game.settings, 'camera.near');
+    event_router(document.getElementById('fov'), "change", maze_game.settings, 'camera.fov');
 
   </script>
 </body>
