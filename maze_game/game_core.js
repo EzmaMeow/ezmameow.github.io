@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import * as BufferGeometryUtils from "three/addons/utils/BufferGeometryUtils.js";
 import * as Game_Utils from './game_utility.js'
+import * as CANNON from "https://esm.sh/cannon-es";
 
 export class Signal {
     static get REMOVE() { return -1 };
@@ -270,10 +271,10 @@ export class Input_Manager {
 
 //declares the basic structure of a state or a object to be observed
 export class Reactive_Object {
-    #on_change = new Signal; get on_change() { return this.#on_change; } 
-    #on_clear = new Signal; get on_clear() { return this.#on_clear; } 
-    #on_load = new Signal; get on_load() { return this.#on_load; } 
-    #on_delete = new Signal; get on_delete() { return this.#on_delete; } 
+    #on_change = new Signal; get on_change() { return this.#on_change; }
+    #on_clear = new Signal; get on_clear() { return this.#on_clear; }
+    #on_load = new Signal; get on_load() { return this.#on_load; }
+    #on_delete = new Signal; get on_delete() { return this.#on_delete; }
     clear() { this.#on_clear.emit(); }
     load() { this.on_load.emit(); }
     delete() {
@@ -396,6 +397,7 @@ export class Level extends THREE.Scene {
     static loader = new THREE.TextureLoader();
     static default_source_image = "maze.png";
     level_image;
+    world;
     //TODO: allow this to be set, but would need to:
     //update all cache object base off of it 
     //rebuild the world and adjust all object to the new positions
@@ -407,13 +409,13 @@ export class Level extends THREE.Scene {
     static_objects = {};
 
     get default_wall_mat() {
-        return this.resources.get_geometry('wall', new THREE.MeshLambertMaterial({ color: 0x87ceeb, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 10 }));
+        return this.resources.get_geometry('wall', new THREE.MeshLambertMaterial({ color: 0x6a7a8c, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 10 }));
     }
     get default_floor_mat() {
-        return this.resources.get_geometry('floor', new THREE.MeshLambertMaterial({ color: 0x87b1eb, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 10 }));
+        return this.resources.get_geometry('floor', new THREE.MeshLambertMaterial({ color: 0x6f7d6f, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 10 }));
     }
     get default_ceil_mat() {
-        return this.resources.get_geometry('ceil', new THREE.MeshLambertMaterial({ color: 0x87ebe3, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 10 }));
+        return this.resources.get_geometry('ceil', new THREE.MeshLambertMaterial({ color: 0x7f7f7f, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 10 }));
     }
 
     get default_xborder_geo() {
@@ -469,6 +471,17 @@ export class Level extends THREE.Scene {
     }
     build_maze() {
         const geometries = [];
+
+        if (this.maze_body) {
+            this.maze_body.shapes.length = 0;
+        }
+        else {
+            this.maze_body = new CANNON.Body({
+                mass: 0, 
+                type: CANNON.Body.STATIC
+            });
+            this.world.addBody(this.maze_body);
+        }
         //Todo: move the plane geo to geos and have a function or getter that update them
         this.level_image.for_each_pixel((pixel_info) => {
             //cacheing these in the resources so they do not need to be manually disposed (mostly the borders handling it would be a pain to disposed). 
@@ -498,8 +511,23 @@ export class Level extends THREE.Scene {
                     nz.translate(pixel_info.x * this.#cell_size.x, 0.0, pixel_info.y * this.#cell_size.z - this.#cell_size.x / 2.0);
                     geometries.push(nz);
                 }
+
+                //const body = new CANNON.Body({
+                //    mass: 0, // kg
+                //    type: CANNON.Body.STATIC,
+                //    shape: new CANNON.Box(this.get_cell_size().clone().divideScalar(2.0)),
+                //})
+                //body.position.set(pixel_info.x * this.#cell_size.x, this.#cell_size.y / 2.0, pixel_info.y * this.#cell_size.z)
+                //this.world.addBody(body)
+                //this.maze_bodies.push(body);
+                this.maze_body.addShape(
+                    new CANNON.Box(this.get_cell_size().clone().divideScalar(2.0)),
+                    new CANNON.Vec3(pixel_info.x * this.#cell_size.x, this.#cell_size.y / 2.0, pixel_info.y * this.#cell_size.z)
+                )
+
             }
         });
+        
         const maze_geo = BufferGeometryUtils.mergeGeometries(geometries, true);
         this.resources.set_geometry('maze', maze_geo);
         for (const geometry of geometries) {
@@ -591,6 +619,15 @@ export class Level extends THREE.Scene {
         floor.rotation.x = -Math.PI / 2;
         floor.position.set(this.level_image.image.height * this.#cell_size.x / 2.0 - this.#cell_size.x / 2.0, 0.0, this.level_image.image.width * this.#cell_size.z / 2.0 - this.#cell_size.z / 2.0);
         this.add(floor);
+        //Todo: decided if this need to be a box or stay as an endless plane (might not be needed, but some bodies be better shared)
+        //since the idea is to add proper floor later, the big floor would be to stop things from falling out of bounds
+        //TODO make this a instance var to be reused though it would not need to be modifed except for height
+        const groundBody = new CANNON.Body({
+            type: CANNON.Body.STATIC,
+            shape: new CANNON.Plane(),
+        })
+        groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0) // make it face up
+        this.world.addBody(groundBody)
         return floor;
     }
     #create_static_ceil() {
@@ -650,10 +687,17 @@ export class Level extends THREE.Scene {
             self.default_wall_mat.map = texture;
             texture.wrapS = texture.wrapT = THREE.RepeatWrapping
         });
+        this.resources.load_resource('lightmap.png', 'lightmap', Resource_Manager.KEYS.TYPES.TEXTURE, (texture) => {
+            //the lightmap is a test
+            self.default_wall_mat.lightmap = texture;
+            self.default_floor_mat.lightmap = texture;
+            self.default_ceil_mat.lightmap = texture;
+        });
 
     }
     constructor(canvas, source_image = Level.default_source_image) {
         super();
+        this.world = new CANNON.World({ gravity: new CANNON.Vec3(0.0, -9.82, 0.0) })
         this.resources = Resource_Manager.default_instance; //cache the Resource_Manager so it could be overrided
         this.load_resources();
         this.level_image = new Level_Image(source_image);

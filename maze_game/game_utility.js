@@ -15,6 +15,52 @@ export function convert_to_same_type(to, from) {
     }
 }
 
+//may move these. not sure where they belong. kind of a level thing
+//also a bit of a pain to adjust the amounts. the other channels would reprents the details and metadata(if need)
+export function decode_cell_id(R) {
+    // FLAG REGION (0–7)
+    //NOTE: could mergr the tw0
+    if (R < 8) {
+        return {
+            type: "flag",
+            area:  (R & 1) ? 1 : 0,
+            floor: (R & 2) ? 1 : 0,
+            ceil:  (R & 4) ? 1 : 0
+        };
+    }
+
+    // TILE REGION (8–255)
+    const value = R - 8;
+
+    const area_id  = value % 16; //0–15 // none, wall, trap, safe up, unsafe up, safe volume, unsafe volume, ...reserver wall shapes
+    const floor_id = Math.floor(value / 16) % 8; // 0–7 // maybe none, floor, safe down, unsafe down ,safe liquid, unsafe liquid, misc 
+    const ceil_id  = Math.floor(value / 128); // 0–3 //provably none, full, hole, and misc. mostly for visual
+
+    return {
+        type: "tile",
+        area:  area_id,
+        floor: floor_id,
+        ceil:  ceil_id
+    };
+}
+
+export function encode_cell_id(wall, floor, ceil) {
+    if (wall === 0 && floor === 0 && ceil === 0) {
+        return 0;
+    }
+
+    if (wall <= 1 && floor <= 1 && ceil <= 1) {
+        return (wall ? 1 : 0) |
+               (floor ? 2 : 0) |
+               (ceil ? 4 : 0);
+    }
+
+    return 8 + wall + (floor * 16) + (ceil * 128);
+}
+
+
+
+
 //return a new vector. ulitity functions should try to be pure
 export function get_abs_distance(start, end, target = new Vector3()) {
     return target.set(
