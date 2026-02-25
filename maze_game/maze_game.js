@@ -2,7 +2,13 @@
 import * as THREE from 'three';
 import * as Game_Utils from './game_utility.js'
 import * as CANNON from "https://esm.sh/cannon-es";
-import { Level, Resource_Manager, Input_Manager, Signal, State, Reactive_Object } from './game_core.js'
+import { Signal, State, Reactive_Object} from './game_core.js'
+import { Physics_Object } from './game_objects.js'
+import { Game } from './game.js'
+import { Maze_Level } from './maze_level.js'
+import { Resource_Manager } from './resource_manager.js'
+import { Input_Manager } from './input_manager.js'
+import { Player_Character } from './player_character.js'
 //import CannonDebugger from "https://esm.sh/cannon-es-debugger";
 
 const canvas = document.getElementById("game");
@@ -31,88 +37,15 @@ export class World_State {
 	constructor() {
 	}
 }
-//colliders are bounds offset by position. dynamic object need to update the position as it moves
-//also the shape is indepenent of the positions so one need to translate it with the position
-//may contain properties such as collsion layer, can slide, and physic properties
-//TODO: might not used since using CANNON
-export class Collider extends THREE.Object3D {
-	#shape = new THREE.Box3(new THREE.Vector3(), new THREE.Vector3());
-	//#position = new THREE.Vector3(0,0,0);
-	set shape(value) {
-		if (value) { this.#shape.copy(value); }
-	}
-	get shape() {
-		return this.#shape;
-	}
-	//set position(value){
-	//	if (value) {this.#position.copy(value);}
-	//}
-	//get position(){
-	//	return this.#position;
-	//}
-	//dedicated getter of the shape that translate it with the position 
-	get_bounds() {
-		const bounds = this.shape.clone();
-		bounds.translate(this.getWorldPosition(new THREE.Vector3()))
-		//onsole.log(bounds)
-		return bounds
-	}
-	constructor(options = {}) {
-		super();
-		if (options['shape']) { this.shape = options['shape']; }
-		if (options['position']) { this.position.copy(options['position']); }
-
-	}
-}
 
 //NOTE object.updateMatrixWorld() for world position in cases where positions
 //of children becomes reltive to the parent
 
 //player might be part of maze.js or it could be part of game_core.js
 //but most likly a character object will be added to core and player stay here while extending that character
-export class Player extends THREE.Object3D {
-	//TODO: Move all the player base logic here and maybe create a dedicated character object
-	speed = 0.05;
-	camera = null;
 
-	physics_update(delta = 1.0 / 60.0) { //note only 1/60 since that the default fixed rate
-		this.position.copy(this.body.position)
-		//below is not needed to prevent messing with viewing
-		//this.quaternion.copy(this.body.quaternion)
-	}
 
-	render_update(delta = 1.0) {
-
-	}
-
-	constructor(options = {
-		'position': new THREE.Vector3(),
-		'collider': { 'shape': new THREE.Box3(new THREE.Vector3(-0.25, -0.0, -0.25), new THREE.Vector3(0.25, 1.0, 0.25)) }
-	}) {
-		super();
-		if (options['position']) { this.position.copy(options['position']) }
-		this.body = new CANNON.Body({
-			mass: 5, // kg
-			shape: new CANNON.Cylinder(0.25, 0.25, 0.5, 8),
-		})
-		this.body.angularFactor.set(0, 0, 0)
-		this.body.position.copy(this.position) // m
-		Maze_Game.world.addBody(this.body)
-		//NOTE: the aspect ration of the camera should be handle elsewhere
-		//also may need a getter for the current active camera or have one and allow characters to possessed them if needed.
-		//this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.001, 32);
-		//this.camera = new THREE.PerspectiveCamera(75, 1.0, 0.001, 32);
-		//TODO: open a camera ref slot or add as child if move modify all children
-		this.light = new THREE.PointLight(0x3a3a4f, 0.5, 128, 1.0);
-		this.light.position.y + 0.25;
-		this.add(this.light);
-
-		this.collider = new Collider(options['collider'] ? options['collider'] : {});
-		this.add(this.collider);
-	}
-}
-
-export class Maze_Game {
+export class Maze_Game extends Game {
 	static scene; //main scene for rendering reasons
 	static world; //main world
 	debug_mode = false;
@@ -178,19 +111,27 @@ export class Maze_Game {
 		}
 	}
 
-	constructor() {
-		const level = new Level(canvas, "maze.png");
+	constructor(
+		renderer= new THREE.WebGLRenderer({ canvas, antialias: true, logarithmicDepthBuffer: true }),
+		camera= new THREE.PerspectiveCamera(50, canvas_body.clientWidth / canvas_body.clientHeight, 0.001, 32)
+	) {
+		super(renderer,camera);
+		const level = new Maze_Level(canvas, this.world, "maze.png");
 		this.level = level;
-		Maze_Game.scene = level; //TODO: add cleanup for static scene and world incase abuses
-		Maze_Game.world = level.world;
+		this.scene.add(level);
+		this.scene.background = new THREE.Color(0x444444);
+		Maze_Game.scene = this.scene; //TODO: add cleanup for static scene and world incase abuses
+		Maze_Game.world = this.world;
+		Maze_Game.level = this.level;
+		this.renderer = renderer//level.renderer;
 		//todo: remove all this.level and maze_game.level for Maze_Game.scene
-		level.renderer.setSize(canvas_body.clientWidth, canvas_body.clientHeight);
-		level.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2.0));
+		this.renderer.setSize(canvas_body.clientWidth, canvas_body.clientHeight);
+		this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2.0));
 		const level_image = level.level_image;
-		const player = new Player();
+		const player = new Player_Character();
 		this.player = player;
-		const camera = new THREE.PerspectiveCamera(50, canvas_body.clientWidth / canvas_body.clientHeight, 0.001, 32);
-		this.camera = camera;
+		//const camera = camera //new THREE.PerspectiveCamera(50, canvas_body.clientWidth / canvas_body.clientHeight, 0.001, 32);
+		//this.camera = camera;
 		camera.position.y = 0.5 * level.get_cell_size().y //could set the camera back, but left and right clip is worst without collsion bounds
 		player.add(camera);
 		this.settings = new State();
@@ -341,9 +282,6 @@ function startGame(maze_game) {
 	function loop() {
 		requestAnimationFrame(loop);
 
-
-
-
 		if (maze_game.debug_mode) {
 			camera.getWorldDirection(collsion_data.direction);
 		}
@@ -377,42 +315,20 @@ function startGame(maze_game) {
 		if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.DOWN) && maze_game.debug_mode) player.position.y -= player.speed;
 
 		if (moving) {
-			player.body.velocity.copy(collsion_data.velocity);
+			player.physics_body.velocity.copy(collsion_data.velocity);
 		}
 		else {
 			//setting is fine, but probably should have a dedicated stopping way
-			player.body.velocity.set(0.0, 0.0, 0.0);
+			player.physics_body.velocity.set(0.0, 0.0, 0.0);
 		}
 
-
-		Maze_Game.world.fixedStep();
+		maze_game.update(performance.now());
+		//Maze_Game.world.fixedStep();
 		//test (note: physics then rendering. test is syncing the positions)
 		sphereMesh.position.copy(sphereBody.position)
 		sphereMesh.quaternion.copy(sphereBody.quaternion)
-		player.physics_update()
+		//player.physics_update()
 		//test end
-
-		//if (moving) {
-		//	if (!maze_game.debug_mode) {
-		//		let collsion_results = maze_game.world_state.line_trace(collsion_data.from, collsion_data.to);
-		//		if (collsion_results.collsion) {
-		//			if (Game_Utils.is_vector_valid(collsion_results.intersection)) {
-		//				player.position.copy(collsion_results.intersection);
-		//			}
-		//		}
-		//		else {
-		//			player.position.copy(collsion_data.to);
-		//		}
-		//	}
-		//	else {
-		//		player.position.copy(collsion_data.to);
-		//	}
-		//}
-
-
-
-
-
 
 		if (maze_game.resize) {
 			const width = canvas_body.clientWidth;
@@ -427,7 +343,8 @@ function startGame(maze_game) {
 
 		level.get_cell_bounds(level.get_cell_position(player.position), box);
 		//cannonDebugger.update();
-		level.renderer.render(level, camera);
+		//TODO: try to move this to the update
+		//level.renderer.render(level, camera);
 
 	}
 

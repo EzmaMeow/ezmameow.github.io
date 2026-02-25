@@ -158,12 +158,12 @@
       increase height and disable collsion)</div>
   </div>
 
-  <script type="module" src="maze.js"></script>
+  
   <script type="module">
-    import * as Game from './maze.js';
+    import {Maze_Game} from './maze_game.js';
     import { convert_to_same_type } from './game_utility.js'
 
-    const maze_game = new Game.Maze_Game();
+    const maze_game = new Maze_Game();
 
     //quick way to binding dom events to the game events
     function event_router(element, event_type, handler, key) {
