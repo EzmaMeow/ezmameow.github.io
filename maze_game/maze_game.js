@@ -116,7 +116,7 @@ export class Maze_Game extends Game {
 		camera= new THREE.PerspectiveCamera(50, canvas_body.clientWidth / canvas_body.clientHeight, 0.001, 32)
 	) {
 		super(renderer,camera);
-		const level = new Maze_Level(canvas, this.world, "maze.png");
+		const level = new Maze_Level(canvas, this.world, "assets/maze.png");
 		this.level = level;
 		this.scene.add(level);
 		this.scene.background = new THREE.Color(0x444444);
