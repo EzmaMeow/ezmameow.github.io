@@ -2,14 +2,14 @@
 import * as THREE from 'three';
 import * as Game_Utils from './game_utility.js'
 import * as CANNON from "https://esm.sh/cannon-es";
-import { Signal, State, Reactive_Object} from './game_core.js'
+import { Signal, State, Reactive_Object } from './game_core.js'
 import { Physics_Object } from './game_objects.js'
 import { Game } from './game.js'
 import { Maze_Level } from './maze_level.js'
 import { Resource_Manager } from './resource_manager.js'
 import { Input_Manager } from './input_manager.js'
 import { Player_Character } from './player_character.js'
-//import CannonDebugger from "https://esm.sh/cannon-es-debugger";
+import CannonDebugger from "https://esm.sh/cannon-es-debugger";
 
 const canvas = document.getElementById("game");
 const canvas_body = document.getElementById("canvas_body");
@@ -112,10 +112,10 @@ export class Maze_Game extends Game {
 	}
 
 	constructor(
-		renderer= new THREE.WebGLRenderer({ canvas, antialias: true, logarithmicDepthBuffer: true }),
-		camera= new THREE.PerspectiveCamera(50, canvas_body.clientWidth / canvas_body.clientHeight, 0.001, 32)
+		renderer = new THREE.WebGLRenderer({ canvas, antialias: true, logarithmicDepthBuffer: true }),
+		camera = new THREE.PerspectiveCamera(50, canvas_body.clientWidth / canvas_body.clientHeight, 0.001, 32)
 	) {
-		super(renderer,camera);
+		super(renderer, camera);
 		const level = new Maze_Level(canvas, this.world, "assets/maze.png");
 		this.level = level;
 		this.scene.add(level);
@@ -263,7 +263,7 @@ function startGame(maze_game) {
 	let moving = false;
 
 	//tests
-	const radius = 1 // m
+	const radius = 0.24 // m
 	const sphereBody = new CANNON.Body({
 		mass: 5, // kg
 		shape: new CANNON.Sphere(radius),
@@ -278,7 +278,7 @@ function startGame(maze_game) {
 
 
 	//test end
-	//const cannonDebugger = CannonDebugger(level, level.world, { color: 0x00ff00 });
+	//const cannonDebugger = CannonDebugger(level, Maze_Game.world, { color: 0x00ff00 });
 	function loop() {
 		requestAnimationFrame(loop);
 
@@ -322,6 +322,8 @@ function startGame(maze_game) {
 			player.physics_body.velocity.set(0.0, 0.0, 0.0);
 		}
 
+		
+
 		maze_game.update(performance.now());
 		//Maze_Game.world.fixedStep();
 		//test (note: physics then rendering. test is syncing the positions)
@@ -341,8 +343,11 @@ function startGame(maze_game) {
 			maze_game.resize = false;
 		}
 
-		level.get_cell_bounds(level.get_cell_position(player.position), box);
+		//if (maze_game.debug_mode) {
 		//cannonDebugger.update();
+		//}
+
+		level.get_cell_bounds(level.get_cell_position(player.position), box);
 		//TODO: try to move this to the update
 		//level.renderer.render(level, camera);
 

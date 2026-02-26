@@ -17,6 +17,12 @@ export function convert_to_same_type(to, from) {
 
 //may move these. not sure where they belong. kind of a level thing
 //also a bit of a pain to adjust the amounts. the other channels would reprents the details and metadata(if need)
+//NOTE: may not use this. may only reserve two flags (floor/ceil) then split the remainer into ids with enough spacing
+//to cover rotation, material type, ect. only some would use it. say a block that look the same on all sides will only reserve
+//1 id per material while stairs may reserve 4 and something that can rotate all the way would need 6 per material
+//material can cover floor and ceil style, but may need to reserver some ids for them. maybe 4 each or like below and 
+//8 to 4. these ids are to ref preloaded resources that text file may modify per level. also such approch could help manager memeory
+//at the cost of limit in variation in the level.
 export function decode_cell_id(R) {
     // FLAG REGION (0–7)
     //NOTE: could mergr the tw0

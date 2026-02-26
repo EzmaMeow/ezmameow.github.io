@@ -89,10 +89,7 @@ export class Maze_Level extends Level {
     //update all cache object base off of it 
     //rebuild the world and adjust all object to the new positions
     #cell_size = new THREE.Vector3(2.0, 2.0, 2.0);
-    #KEYS = Object.freeze({
-        BORDER: Object.freeze({ NORTH: 'north', SOUTH: 'south', EAST: 'east', WEST: 'west', FLOOR: 'floor', CEIL: 'ceil' }),
-    })
-    get KEYS() { return this.#KEYS; }
+
     static_objects = {};
 
     get default_wall_mat() {
@@ -104,17 +101,6 @@ export class Maze_Level extends Level {
     get default_ceil_mat() {
         return this.resources.get_geometry('ceil', new THREE.MeshLambertMaterial({ color: 0x7f7f7f, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 10 }));
     }
-
-    get default_xborder_geo() {
-        return this.resources.get_geometry('xborder', new THREE.PlaneGeometry((this.level_image.image.height) * this.#cell_size.x, this.#cell_size.y, this.#cell_size.z));
-    }
-    get default_zborder_geo() {
-        return this.resources.get_geometry('zborder', new THREE.PlaneGeometry(this.#cell_size.x, this.#cell_size.y, (this.level_image.image.width) * this.#cell_size.z));
-    }
-    get default_area_geo() {
-        return this.resources.get_resource('area', Resource_Manager.KEYS.TYPES.GEOMETRY);
-    }
-
 
     //Note: the one that create this should check if on exists incase it get called twice
     maze_mesh = null;
@@ -134,12 +120,26 @@ export class Maze_Level extends Level {
     get_cell_world_position(position) {
         return Game_Utils.get_cell_position(position, this.#cell_size).add(new THREE.Vector3(0, this.#cell_size.y / 2, 0));
     }
-    is_wall(pixel_info) {
+    get_neighboring_pixels(pixel_data) {
+        const pixels_data = {};
+        //NOTE: This is the direction they are facing. a wall blocking the east will generater a west facing wall if handle by the empty space west of the wall.
+        //pixels_data['source'] = pixel_data;//this.get_pixel_info(this.level_image.convert_coord_to_index(pixel_data.x,pixel_data.y));
+        pixels_data['north'] = this.level_image.get_pixel_info(this.level_image.convert_coord_to_index(pixel_data.x, pixel_data.y - 1));
+        pixels_data['south'] = this.level_image.get_pixel_info(this.level_image.convert_coord_to_index(pixel_data.x, pixel_data.y + 1));
+        pixels_data['west'] = this.level_image.get_pixel_info(this.level_image.convert_coord_to_index(pixel_data.x - 1, pixel_data.y));
+        pixels_data['east'] = this.level_image.get_pixel_info(this.level_image.convert_coord_to_index(pixel_data.x + 1, pixel_data.y));
+        return pixels_data;
+    }
+    is_wall(pixel_info, height = 0) {
         //will treat null as a wall unless need to extend pass bounds
-        if (pixel_info == null) {
+        if (pixel_info === null) {
             return true
         }
-        return pixel_info.r < 128 && pixel_info.g < 128 && pixel_info.b < 128;
+        if (height == 0) { return pixel_info.r < 128 }
+        if (height == 1) { return pixel_info.g < 128 }
+        if (height == 2) { return pixel_info.b < 128 }
+        return null;
+        //return pixel_info.r < 128 && pixel_info.g < 128 && pixel_info.b < 128;
     }
     //get the cell as a box. if a box is passed, then it will reset it to the bounds
     //if coords are provide, then it will also translate it
@@ -158,6 +158,8 @@ export class Maze_Level extends Level {
     }
     build_maze() {
         const geometries = [];
+        //note: geos should be group base on their needed materials
+        //such as wall, floor, and ceil plus overrides
 
         if (this.maze_body) {
             this.maze_body.shapes.length = 0;
@@ -173,45 +175,46 @@ export class Maze_Level extends Level {
         this.level_image.for_each_pixel((pixel_info) => {
             //cacheing these in the resources so they do not need to be manually disposed (mostly the borders handling it would be a pain to disposed). 
             //the issue is they need to be update on image change and first time running need to create them twice plus the loop
-            const px = this.resources.get_resource('east_face', Resource_Manager.KEYS.TYPES.GEOMETRY).clone(); // +X //left to right of int spawn facing (|->)
-            const nx = this.resources.get_resource('west_face', Resource_Manager.KEYS.TYPES.GEOMETRY).clone(); // -X (<-|)
-            const pz = this.resources.get_resource('south_face', Resource_Manager.KEYS.TYPES.GEOMETRY).clone(); // +Z //(v) (south)
-            const nz = this.resources.get_resource('north_face', Resource_Manager.KEYS.TYPES.GEOMETRY).clone(); // -Z (^) the look direction (north)
+            const pixels_data = this.get_neighboring_pixels(pixel_info);
             if (this.is_wall(pixel_info)) {
-                let near_pixel_info = this.level_image.get_pixel_info(this.level_image.convert_coord_to_index(pixel_info.x + 1, pixel_info.y))
-                if (!this.is_wall(near_pixel_info)) {
-                    px.translate(pixel_info.x * this.#cell_size.x + this.#cell_size.z / 2.0, 0.0, pixel_info.y * this.#cell_size.z);
-                    geometries.push(px);
-                }
-                near_pixel_info = this.level_image.get_pixel_info(this.level_image.convert_coord_to_index(pixel_info.x - 1, pixel_info.y))
-                if (!this.is_wall(near_pixel_info)) {
-                    nx.translate(pixel_info.x * this.#cell_size.x - this.#cell_size.z / 2.0, 0.0, pixel_info.y * this.#cell_size.z);
-                    geometries.push(nx);
-                }
-                near_pixel_info = this.level_image.get_pixel_info(this.level_image.convert_coord_to_index(pixel_info.x, pixel_info.y + 1))
-                if (!this.is_wall(near_pixel_info)) {
-                    pz.translate(pixel_info.x * this.#cell_size.x, 0.0, pixel_info.y * this.#cell_size.z + this.#cell_size.x / 2.0);
-                    geometries.push(pz);
-                }
-                near_pixel_info = this.level_image.get_pixel_info(this.level_image.convert_coord_to_index(pixel_info.x, pixel_info.y - 1))
-                if (!this.is_wall(near_pixel_info)) {
-                    nz.translate(pixel_info.x * this.#cell_size.x, 0.0, pixel_info.y * this.#cell_size.z - this.#cell_size.x / 2.0);
-                    geometries.push(nz);
-                }
-
-                //const body = new CANNON.Body({
-                //    mass: 0, // kg
-                //    type: CANNON.Body.STATIC,
-                //    shape: new CANNON.Box(this.get_cell_size().clone().divideScalar(2.0)),
-                //})
-                //body.position.set(pixel_info.x * this.#cell_size.x, this.#cell_size.y / 2.0, pixel_info.y * this.#cell_size.z)
-                //this.world.addBody(body)
-                //this.maze_bodies.push(body);
                 this.maze_body.addShape(
                     new CANNON.Box(this.get_cell_size().clone().divideScalar(2.0)),
                     new CANNON.Vec3(pixel_info.x * this.#cell_size.x, this.#cell_size.y / 2.0, pixel_info.y * this.#cell_size.z)
                 )
+            }
+            else {
+                if (this.is_wall(pixels_data.west)) {
+                    const face = this.resources.get_resource('east_face', Resource_Manager.KEYS.TYPES.GEOMETRY).clone();
+                    face.translate(pixel_info.x * this.#cell_size.x - this.#cell_size.z / 2.0, 0.0, pixel_info.y * this.#cell_size.z);
+                    geometries.push(face);
+                }
+                if (this.is_wall(pixels_data.east)) {
+                    const face = this.resources.get_resource('west_face', Resource_Manager.KEYS.TYPES.GEOMETRY).clone();
+                    face.translate(pixel_info.x * this.#cell_size.x + this.#cell_size.z / 2.0, 0.0, pixel_info.y * this.#cell_size.z);
+                    geometries.push(face);
+                }
+                if (this.is_wall(pixels_data.south)) {
+                    const face = this.resources.get_resource('north_face', Resource_Manager.KEYS.TYPES.GEOMETRY).clone();
+                    face.translate(pixel_info.x * this.#cell_size.x, 0.0, pixel_info.y * this.#cell_size.z + this.#cell_size.x / 2.0);
+                    geometries.push(face);
+                }
+                if (this.is_wall(pixels_data.north)) {
+                    const face = this.resources.get_resource('south_face', Resource_Manager.KEYS.TYPES.GEOMETRY).clone();
+                    face.translate(pixel_info.x * this.#cell_size.x, 0.0, pixel_info.y * this.#cell_size.z - this.#cell_size.x / 2.0);
+                    geometries.push(face);
+                }
 
+                //building ceil and floor of an empty cell
+                if (!this.is_wall(pixel_info, -1)) {
+                    const face = this.resources.get_resource('up_face', Resource_Manager.KEYS.TYPES.GEOMETRY).clone();
+                    face.translate(pixel_info.x * this.#cell_size.x, -this.#cell_size.y / 2.0, pixel_info.y * this.#cell_size.z);
+                    geometries.push(face);
+                }
+                if (!this.is_wall(pixel_info, 1)) {
+                    const face = this.resources.get_resource('down_face', Resource_Manager.KEYS.TYPES.GEOMETRY).clone();
+                    face.translate(pixel_info.x * this.#cell_size.x, this.#cell_size.y / 2.0, pixel_info.y * this.#cell_size.z);
+                    geometries.push(face);
+                }
             }
         });
 
@@ -236,109 +239,6 @@ export class Maze_Level extends Level {
 
     }
 
-    #create_static_border(id) {
-        const half_cell_size = this.#cell_size.clone().divideScalar(2.0);
-        const geometries = [];
-        let border_geo = null;
-        let border = null;
-        if (this.static_objects[id]) {
-            border = this.static_objects[id];
-            border.geometry.dispose();
-            border = null;
-        }
-        if (id == this.KEYS.BORDER.NORTH) {
-            for (let i = 0; i < this.level_image.image.height; i++) {
-                //okay these need to be in the loop or get clone from an fixed instance(but this needs to clone the vectors too)
-                const plane = this.resources.get_geometry('south_face', new THREE.PlaneGeometry(this.#cell_size.z, this.#cell_size.y)).clone();
-                plane.translate(i * this.#cell_size.x, 0, - this.#cell_size.z / 2);
-                geometries.push(plane);
-            }
-            border_geo = BufferGeometryUtils.mergeGeometries(geometries, true);
-            border = new THREE.Mesh(border_geo, this.default_wall_mat);
-        }
-        else if (id == this.KEYS.BORDER.SOUTH) {
-            for (let i = 0; i < this.level_image.image.height; i++) {
-                const plane = this.resources.get_geometry('north_face', new THREE.PlaneGeometry(this.#cell_size.z, this.#cell_size.y).rotateY(Math.PI)).clone();
-                plane.translate(i * this.#cell_size.x, 0, this.level_image.image.width * 2 - half_cell_size.z);
-                geometries.push(plane);
-            }
-            border_geo = BufferGeometryUtils.mergeGeometries(geometries, true);
-            border = new THREE.Mesh(border_geo, this.default_wall_mat);
-        }
-        else if (id == this.KEYS.BORDER.EAST) {
-            for (let i = 0; i < this.level_image.image.height; i++) {
-                const plane = this.resources.get_geometry('west_face', new THREE.PlaneGeometry(this.#cell_size.x, this.#cell_size.y).rotateY(-Math.PI / 2)).clone();
-                plane.translate(this.level_image.image.height * 2 - half_cell_size.x, 0, i * this.#cell_size.z);
-                geometries.push(plane);
-            }
-            border_geo = BufferGeometryUtils.mergeGeometries(geometries, true);
-            border = new THREE.Mesh(border_geo, this.default_wall_mat);
-        }
-        else if (id == this.KEYS.BORDER.WEST) {
-            for (let i = 0; i < this.level_image.image.height; i++) {
-                const plane = this.resources.get_geometry('east_face', new THREE.PlaneGeometry(this.#cell_size.x, this.#cell_size.y).rotateY(Math.PI / 2)).clone();
-                plane.translate(-half_cell_size.x, 0, i * this.#cell_size.z);
-                geometries.push(plane);
-            }
-            border_geo = BufferGeometryUtils.mergeGeometries(geometries, true);
-            border = new THREE.Mesh(border_geo, this.default_wall_mat);
-        }
-        this.resources.set_geometry(id, border_geo)
-        this.static_objects[id] = border
-        border.name = id;
-        border.position.y = half_cell_size.y;
-        this.add(border);
-        for (const geometry of geometries) {
-            geometry.dispose();
-        }
-        return border;
-    }
-    #create_static_floor() {
-        let floor;
-        if (this.KEYS.BORDER.FLOOR in this.static_objects) {
-            floor = this.static_objects[this.KEYS.BORDER.FLOOR];
-        }
-        else {
-            floor = new THREE.Mesh(this.default_area_geo, this.default_floor_mat);
-        }
-        this.static_objects[this.KEYS.BORDER.FLOOR] = floor;
-        floor.name = this.KEYS.BORDER.FLOOR;
-        floor.rotation.x = -Math.PI / 2;
-        floor.position.set(this.level_image.image.height * this.#cell_size.x / 2.0 - this.#cell_size.x / 2.0, 0.0, this.level_image.image.width * this.#cell_size.z / 2.0 - this.#cell_size.z / 2.0);
-        this.add(floor);
-        //Todo: decided if this need to be a box or stay as an endless plane (might not be needed, but some bodies be better shared)
-        //since the idea is to add proper floor later, the big floor would be to stop things from falling out of bounds
-        //TODO make this a instance var to be reused though it would not need to be modifed except for height
-        const groundBody = new CANNON.Body({
-            type: CANNON.Body.STATIC,
-            shape: new CANNON.Plane(),
-        })
-        groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0) // make it face up
-        this.world.addBody(groundBody)
-        return floor;
-    }
-    #create_static_ceil() {
-        let ceil;
-        if (this.KEYS.BORDER.CEIL in this.static_objects) {
-            ceil = this.static_objects[this.KEYS.BORDER.CEIL];
-        }
-        else {
-            ceil = new THREE.Mesh(this.default_area_geo, this.default_ceil_mat);
-        }
-        this.static_objects[this.KEYS.BORDER.CEIL] = ceil;
-        ceil.name = this.KEYS.BORDER.CEIL;
-        ceil.rotation.x = Math.PI / 2;
-        ceil.position.set(this.level_image.image.height * this.#cell_size.x / 2.0 - this.#cell_size.x / 2.0, this.#cell_size.y, this.level_image.image.width * this.#cell_size.z / 2.0 - this.#cell_size.z / 2.0);
-        this.add(ceil);
-        return ceil;
-    }
-    get north_border() { return this.#create_static_border(this.KEYS.BORDER.NORTH); }
-    get south_border() { return this.#create_static_border(this.KEYS.BORDER.SOUTH); }
-    get east_border() { return this.#create_static_border(this.KEYS.BORDER.EAST); }
-    get west_border() { return this.#create_static_border(this.KEYS.BORDER.WEST); }
-    get static_floor() { return this.#create_static_floor(); }
-    get static_ceil() { return this.#create_static_ceil(); }
-
     update_geometries() {
         //could check and update, but bruteforcing it at the moment
         this.resources.set_resource('east_face', new THREE.PlaneGeometry(this.#cell_size.x, this.#cell_size.y).rotateY(Math.PI / 2), Resource_Manager.KEYS.TYPES.GEOMETRY); // +X //left to right of int spawn facing (|->)
@@ -346,21 +246,68 @@ export class Maze_Level extends Level {
         this.resources.set_resource('south_face', new THREE.PlaneGeometry(this.#cell_size.z, this.#cell_size.y), Resource_Manager.KEYS.TYPES.GEOMETRY); // +Z //(v) (south)
         this.resources.set_resource('north_face', new THREE.PlaneGeometry(this.#cell_size.z, this.#cell_size.y).rotateY(Math.PI), Resource_Manager.KEYS.TYPES.GEOMETRY); // -Z (^) the look direction (north)
 
-        this.resources.set_resource('area', new THREE.PlaneGeometry(this.level_image.image.height * this.#cell_size.x, this.level_image.image.width * this.#cell_size.z), Resource_Manager.KEYS.TYPES.GEOMETRY);
+        this.resources.set_resource('down_face', new THREE.PlaneGeometry(this.#cell_size.x, this.#cell_size.z).rotateX(Math.PI / 2), Resource_Manager.KEYS.TYPES.GEOMETRY); //ceil
+        this.resources.set_resource('up_face', new THREE.PlaneGeometry(this.#cell_size.x, this.#cell_size.z).rotateX(-Math.PI / 2), Resource_Manager.KEYS.TYPES.GEOMETRY); //floor
+
+    }
+    //this is the new bounds system. this should be called once or redesign to only create missing bound.
+    //or used to replace borders and floor (ceil provably not needed, but may be if no ceil collison is generated at top level)
+    create_bounds() {
+        if (!this.floor_bounds) {
+            this.floor_bounds = new CANNON.Body({
+                type: CANNON.Body.STATIC,
+                shape: new CANNON.Plane(),
+            })
+            this.world.addBody(this.floor_bounds)
+        }
+        this.floor_bounds.quaternion.setFromEuler(-Math.PI / 2, 0, 0)
+
+        if (!this.north_bounds) {
+            this.north_bounds = new CANNON.Body({
+                type: CANNON.Body.STATIC,
+                shape: new CANNON.Plane(),
+            })
+            this.world.addBody(this.north_bounds)
+        }
+        this.north_bounds.quaternion.setFromEuler(0, 0, 0)
+        this.north_bounds.position.z = -this.#cell_size.z / 2.0
+
+        if (!this.south_bounds) {
+            this.south_bounds = new CANNON.Body({
+                type: CANNON.Body.STATIC,
+                shape: new CANNON.Plane(),
+            })
+            this.world.addBody(this.south_bounds)
+        }
+        this.south_bounds.quaternion.setFromEuler(Math.PI, 0, 0)
+        this.south_bounds.position.z = this.level_image.image.width * 2 - this.#cell_size.z / 2.0
+
+        if (!this.west_bounds) {
+            this.west_bounds = new CANNON.Body({
+                type: CANNON.Body.STATIC,
+                shape: new CANNON.Plane(),
+            })
+            this.world.addBody(this.west_bounds)
+        }
+        this.west_bounds.quaternion.setFromEuler(0, Math.PI / 2, 0)
+        this.west_bounds.position.x = -this.#cell_size.x / 2.0
+
+        if (!this.east_bounds) {
+            this.east_bounds = new CANNON.Body({
+                type: CANNON.Body.STATIC,
+                shape: new CANNON.Plane(),
+            })
+            this.world.addBody(this.east_bounds)
+        }
+        this.east_bounds.quaternion.setFromEuler(0, -Math.PI / 2, 0)
+        this.east_bounds.position.x = this.level_image.image.height * 2 - this.#cell_size.x / 2.0
 
     }
     build() {
-        //This build all the parts of the level
-        //NOTE: should have the create function also reset the states
-        //of the meshes to the new state of the level
         this.update_geometries();
         this.build_maze();
-        this.#create_static_border(this.KEYS.BORDER.NORTH);
-        this.#create_static_border(this.KEYS.BORDER.SOUTH);
-        this.#create_static_border(this.KEYS.BORDER.EAST);
-        this.#create_static_border(this.KEYS.BORDER.WEST);
-        this.#create_static_floor();
-        this.#create_static_ceil();
+        this.create_bounds();
+
     }
     //this is here to prevent setting it
     get_cell_size() { return this.#cell_size; }
@@ -387,7 +334,7 @@ export class Maze_Level extends Level {
         this.resources = Resource_Manager.default_instance; //cache the Resource_Manager so it could be overrided
         this.load_resources();
         this.level_image = new Level_Image(source_image);
-        
+
         //this.renderer = this.resources.get_renderer(
         //    'main',
         //    new THREE.WebGLRenderer({ canvas, antialias: true, logarithmicDepthBuffer: true })
