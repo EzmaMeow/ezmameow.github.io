@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import {TextureLoader, Vector3, MeshLambertMaterial, Box3,PlaneGeometry,Mesh} from 'three';
 import * as BufferGeometryUtils from "three/addons/utils/BufferGeometryUtils.js";
 import * as Game_Utils from './game_utility.js'
 import * as CANNON from "https://esm.sh/cannon-es";
@@ -82,24 +82,24 @@ export class Level_Image {
 export class Maze_Level extends Level {
     //may relocate the loader. it here since level (along with maze_game) will be acess often, but I may add
     //a static class for hold disposable types of reusable nature
-    static loader = new THREE.TextureLoader();
+    static loader = new TextureLoader();
     static default_source_image = "assets/maze.png";
     level_image;
     //TODO: allow this to be set, but would need to:
     //update all cache object base off of it 
     //rebuild the world and adjust all object to the new positions
-    #cell_size = new THREE.Vector3(2.0, 2.0, 2.0);
+    #cell_size = new Vector3(2.0, 2.0, 2.0);
 
     static_objects = {};
 
     get default_wall_mat() {
-        return this.resources.get_geometry('wall', new THREE.MeshLambertMaterial({ color: 0x6a7a8c, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 10 }));
+        return this.resources.get_geometry('wall', new MeshLambertMaterial({ color: 0x6a7a8c, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 10 }));
     }
     get default_floor_mat() {
-        return this.resources.get_geometry('floor', new THREE.MeshLambertMaterial({ color: 0x6f7d6f, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 10 }));
+        return this.resources.get_geometry('floor', new MeshLambertMaterial({ color: 0x6f7d6f, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 10 }));
     }
     get default_ceil_mat() {
-        return this.resources.get_geometry('ceil', new THREE.MeshLambertMaterial({ color: 0x7f7f7f, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 10 }));
+        return this.resources.get_geometry('ceil', new MeshLambertMaterial({ color: 0x7f7f7f, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 10 }));
     }
 
     //Note: the one that create this should check if on exists incase it get called twice
@@ -118,7 +118,7 @@ export class Maze_Level extends Level {
         return Game_Utils.get_cell_coords(position, this.#cell_size);
     }
     get_cell_world_position(position) {
-        return Game_Utils.get_cell_position(position, this.#cell_size).add(new THREE.Vector3(0, this.#cell_size.y / 2, 0));
+        return Game_Utils.get_cell_position(position, this.#cell_size).add(new Vector3(0, this.#cell_size.y / 2, 0));
     }
     get_neighboring_pixels(pixel_data) {
         const pixels_data = {};
@@ -149,7 +149,7 @@ export class Maze_Level extends Level {
             bounds.max.copy(this.get_cell_upper_boundary());
         }
         else {
-            bounds = new THREE.Box3(this.get_cell_lower_boundary(), this.get_cell_upper_boundary())
+            bounds = new Box3(this.get_cell_lower_boundary(), this.get_cell_upper_boundary())
         }
         if (coords) {
             bounds.translate(this.get_cell_world_position(coords));
@@ -231,7 +231,7 @@ export class Maze_Level extends Level {
             this.maze_mesh.position.y = this.#cell_size.y / 2.0;
         }
         else {
-            this.maze_mesh = new THREE.Mesh(maze_geo, this.default_wall_mat);
+            this.maze_mesh = new Mesh(maze_geo, this.default_wall_mat);
             this.maze_mesh.name = 'maze';
             this.maze_mesh.position.y = this.#cell_size.y / 2.0;
             this.add(this.maze_mesh);
@@ -241,13 +241,13 @@ export class Maze_Level extends Level {
 
     update_geometries() {
         //could check and update, but bruteforcing it at the moment
-        this.resources.set_resource('east_face', new THREE.PlaneGeometry(this.#cell_size.x, this.#cell_size.y).rotateY(Math.PI / 2), Resource_Manager.KEYS.TYPES.GEOMETRY); // +X //left to right of int spawn facing (|->)
-        this.resources.set_resource('west_face', new THREE.PlaneGeometry(this.#cell_size.x, this.#cell_size.y).rotateY(-Math.PI / 2), Resource_Manager.KEYS.TYPES.GEOMETRY); // -X (<-|)
-        this.resources.set_resource('south_face', new THREE.PlaneGeometry(this.#cell_size.z, this.#cell_size.y), Resource_Manager.KEYS.TYPES.GEOMETRY); // +Z //(v) (south)
-        this.resources.set_resource('north_face', new THREE.PlaneGeometry(this.#cell_size.z, this.#cell_size.y).rotateY(Math.PI), Resource_Manager.KEYS.TYPES.GEOMETRY); // -Z (^) the look direction (north)
+        this.resources.set_resource('east_face', new PlaneGeometry(this.#cell_size.x, this.#cell_size.y).rotateY(Math.PI / 2), Resource_Manager.KEYS.TYPES.GEOMETRY); // +X //left to right of int spawn facing (|->)
+        this.resources.set_resource('west_face', new PlaneGeometry(this.#cell_size.x, this.#cell_size.y).rotateY(-Math.PI / 2), Resource_Manager.KEYS.TYPES.GEOMETRY); // -X (<-|)
+        this.resources.set_resource('south_face', new PlaneGeometry(this.#cell_size.z, this.#cell_size.y), Resource_Manager.KEYS.TYPES.GEOMETRY); // +Z //(v) (south)
+        this.resources.set_resource('north_face', new PlaneGeometry(this.#cell_size.z, this.#cell_size.y).rotateY(Math.PI), Resource_Manager.KEYS.TYPES.GEOMETRY); // -Z (^) the look direction (north)
 
-        this.resources.set_resource('down_face', new THREE.PlaneGeometry(this.#cell_size.x, this.#cell_size.z).rotateX(Math.PI / 2), Resource_Manager.KEYS.TYPES.GEOMETRY); //ceil
-        this.resources.set_resource('up_face', new THREE.PlaneGeometry(this.#cell_size.x, this.#cell_size.z).rotateX(-Math.PI / 2), Resource_Manager.KEYS.TYPES.GEOMETRY); //floor
+        this.resources.set_resource('down_face', new PlaneGeometry(this.#cell_size.x, this.#cell_size.z).rotateX(Math.PI / 2), Resource_Manager.KEYS.TYPES.GEOMETRY); //ceil
+        this.resources.set_resource('up_face', new PlaneGeometry(this.#cell_size.x, this.#cell_size.z).rotateX(-Math.PI / 2), Resource_Manager.KEYS.TYPES.GEOMETRY); //floor
 
     }
     //this is the new bounds system. this should be called once or redesign to only create missing bound.
@@ -319,7 +319,7 @@ export class Maze_Level extends Level {
         const self = this;
         this.resources.load_resource('assets/texture.png', 'texture', Resource_Manager.KEYS.TYPES.TEXTURE, (texture) => {
             self.default_wall_mat.map = texture;
-            texture.wrapS = texture.wrapT = THREE.RepeatWrapping
+            texture.wrapS = texture.wrapT = 1000;//THREE.RepeatWrapping
         });
         this.resources.load_resource('assets/lightmap.png', 'lightmap', Resource_Manager.KEYS.TYPES.TEXTURE, (texture) => {
             //the lightmap is a test

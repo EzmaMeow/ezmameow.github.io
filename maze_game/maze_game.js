@@ -1,5 +1,5 @@
 
-import * as THREE from 'three';
+import {Vector3,Mesh,WebGLRenderer,PerspectiveCamera,Color,Box3Helper,SphereGeometry,MeshNormalMaterial} from 'three';
 import * as Game_Utils from './game_utility.js'
 import * as CANNON from "https://esm.sh/cannon-es";
 import { Signal, State, Reactive_Object } from './game_core.js'
@@ -9,7 +9,7 @@ import { Maze_Level } from './maze_level.js'
 import { Resource_Manager } from './resource_manager.js'
 import { Input_Manager } from './input_manager.js'
 import { Player_Character } from './player_character.js'
-import CannonDebugger from "https://esm.sh/cannon-es-debugger";
+//import CannonDebugger from "https://esm.sh/cannon-es-debugger";
 
 const canvas = document.getElementById("game");
 const canvas_body = document.getElementById("canvas_body");
@@ -20,12 +20,12 @@ const canvas_body = document.getElementById("canvas_body");
 export class Collsion_Data {
 	constructor() {
 		this.collided = false;
-		this.from = new THREE.Vector3();
-		this.to = new THREE.Vector3(); //this is the fill length. could be used to project more.
-		this.direction = new THREE.Vector3();
-		this.intersection = new THREE.Vector3();
+		this.from = new Vector3();
+		this.to = new Vector3(); //this is the fill length. could be used to project more.
+		this.direction = new Vector3();
+		this.intersection = new Vector3();
 		this.collided_object = null;
-		this.velocity = new THREE.Vector3();
+		this.velocity = new Vector3();
 	}
 }
 //a share state about the world such as getting objects in
@@ -112,14 +112,14 @@ export class Maze_Game extends Game {
 	}
 
 	constructor(
-		renderer = new THREE.WebGLRenderer({ canvas, antialias: true, logarithmicDepthBuffer: true }),
-		camera = new THREE.PerspectiveCamera(50, canvas_body.clientWidth / canvas_body.clientHeight, 0.001, 32)
+		renderer = new WebGLRenderer({ canvas, antialias: true, logarithmicDepthBuffer: true }),
+		camera = new PerspectiveCamera(50, canvas_body.clientWidth / canvas_body.clientHeight, 0.001, 32)
 	) {
 		super(renderer, camera);
 		const level = new Maze_Level(canvas, this.world, "assets/maze.png");
 		this.level = level;
 		this.scene.add(level);
-		this.scene.background = new THREE.Color(0x444444);
+		this.scene.background = new Color(0x444444);
 		Maze_Game.scene = this.scene; //TODO: add cleanup for static scene and world incase abuses
 		Maze_Game.world = this.world;
 		Maze_Game.level = this.level;
@@ -255,7 +255,7 @@ function startGame(maze_game) {
 
 	//box test
 	const box = level.get_cell_bounds();
-	level.add(new THREE.Box3Helper(box, 0x008000)); // green color
+	level.add(new Box3Helper(box, 0x008000)); // green color
 
 	//reuable ref base object
 	const collsion_data = new Collsion_Data();
@@ -270,9 +270,9 @@ function startGame(maze_game) {
 	})
 	sphereBody.position.set(-10, 100, -10) // m
 	Maze_Game.world.addBody(sphereBody)
-	const geometry = new THREE.SphereGeometry(radius)
-	const material = new THREE.MeshNormalMaterial()
-	const sphereMesh = new THREE.Mesh(geometry, material)
+	const geometry = new SphereGeometry(radius)
+	const material = new MeshNormalMaterial()
+	const sphereMesh = new Mesh(geometry, material)
 	level.add(sphereMesh)
 
 
@@ -338,8 +338,8 @@ function startGame(maze_game) {
 			console.log('resizing', width, height);
 			camera.aspect = width / height;
 			camera.updateProjectionMatrix()
-			level.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2.0));
-			level.renderer.setSize(width, height);
+			maze_game.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2.0));
+			maze_game.renderer.setSize(width, height);
 			maze_game.resize = false;
 		}
 
