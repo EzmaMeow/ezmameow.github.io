@@ -154,13 +154,14 @@ export class Maze_Level extends Level {
         }
         //todo: properly handle checking the color ceil and floor flags. currently lazy checking to see if it works
         //note: this will be ran each color check. so this represents to cell in focus.
-        if (color_value >= Maze_Level.FLAGS.FLOOR) {
+        if (color_value & Maze_Level.FLAGS.FLOOR) {
             cell_type |= Maze_Level.FLAGS.FLOOR
         }
-        if (color_value >= Maze_Level.FLAGS.CEIL) {
+        if (color_value & Maze_Level.FLAGS.CEIL) {
             cell_type |= Maze_Level.FLAGS.CEIL
         }
         //todo also check if greater than the reseved flags abount (floor and ceil. probably aroung 4)
+        //note: the id will be offset when either flag is set. so the id will depends on the flag set (also ignoring 255)
         if (cell_type >= Maze_Level.FLAGS.FLOOR | Maze_Level.FLAGS.CEIL) {
             cell_type |= Maze_Level.FLAGS.MESH
             //as long as block returns, this will work, else  this will also need to check if less than 255
@@ -258,20 +259,20 @@ export class Maze_Level extends Level {
 
                     //building ceil and floor of an empty cell
                     //if (this.is_wall(pixel_info, i - 1)) {
+                    const up_cell_type = this.get_cell_type(pixel_info, i + 1);
                     const down_cell_type = this.get_cell_type(pixel_info, i - 1);
-                    if (this.has_floor(cell_type) || this.is_wall(down_cell_type) || this.is_bounds(down_cell_type)) {
+                    if (this.has_floor(cell_type) || this.is_wall(down_cell_type) || this.is_bounds(down_cell_type) || this.has_ceil(down_cell_type)) {
                         const face = this.resources.get_resource('up_face', Resource_Manager.KEYS.TYPES.GEOMETRY).clone();
                         face.translate(pixel_info.x * this.#cell_size.x, this.#cell_size.y * i - this.#cell_size.y / 2.0, pixel_info.y * this.#cell_size.z);
                         geometries.push(face);
                     }
                     //if (this.is_wall(pixel_info, i + 1)) {
-                    const up_cell_type = this.get_cell_type(pixel_info, i + 1);
-                    if (this.has_ceil(cell_type) || this.is_wall(up_cell_type)|| this.is_bounds(up_cell_type)) {
+                    if (this.has_ceil(cell_type) || this.is_wall(up_cell_type)|| this.is_bounds(up_cell_type) || this.has_floor(up_cell_type)) {
                         const face = this.resources.get_resource('down_face', Resource_Manager.KEYS.TYPES.GEOMETRY).clone();
                         face.translate(pixel_info.x * this.#cell_size.x, this.#cell_size.y * i + this.#cell_size.y / 2.0, pixel_info.y * this.#cell_size.z);
                         geometries.push(face);
-                        //NOTE TODO: may need a border case for ceil since this won't set one if null above (because that consider just a block atm)
-                        if (!this.is_wall(up_cell_type) || this.is_bounds(up_cell_type)) {
+                        //NOTE also checking if floor above
+                        if (!this.is_wall(up_cell_type) || this.is_bounds(up_cell_type) ) {
                             this.maze_body.addShape(
                                 new CANNON.Box(new CANNON.Vec3(this.#cell_size.x/2.0, 0.01, this.#cell_size.z/2.0)),
                                 new CANNON.Vec3(pixel_info.x * this.#cell_size.x, this.#cell_size.y * i + this.#cell_size.y, pixel_info.y * this.#cell_size.z)

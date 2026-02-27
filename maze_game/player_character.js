@@ -24,10 +24,7 @@ export class Player_Character extends Physics_Object {
         this.movement_component.world = world;
     }
     jump(){
-        if (this.movement_component.on_ground){
-            this.physics_body.velocity.y = this.physics_body.velocity.y + 6.0;
-            this.movement_component.on_ground = false
-        }
+        this.movement_component.jump();
     }
 
     constructor(options = {

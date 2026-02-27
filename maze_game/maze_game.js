@@ -253,8 +253,8 @@ function startGame(maze_game) {
 	const camera = maze_game.camera;
 
 	//box test
-	const box = level.get_cell_bounds();
-	level.add(new Box3Helper(box, 0x008000)); // green color
+	//const box = level.get_cell_bounds();
+	//level.add(new Box3Helper(box, 0x008000)); // green color
 
 	//reuable ref base object
 	const collsion_data = new Collsion_Data();
@@ -321,6 +321,7 @@ function startGame(maze_game) {
 		}
 
 		if (moving) {
+			//NOTE: should handle speed when character or component handles input.
 			player.movement_component.get_direction().copy(collsion_data.direction);
 			//player.physics_body.velocity.set(collsion_data.velocity.x,player.physics_body.velocity.y + collsion_data.velocity.y,collsion_data.velocity.z);
 		}
@@ -352,7 +353,7 @@ function startGame(maze_game) {
 		}
 
 
-		level.get_cell_bounds(level.get_cell_position(player.position), box);
+		//level.get_cell_bounds(level.get_cell_position(player.position), box);
 		//TODO: try to move this to the update
 		//level.renderer.render(level, camera);
 
