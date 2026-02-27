@@ -321,9 +321,11 @@ function startGame(maze_game) {
 		}
 
 		if (moving) {
-			player.physics_body.velocity.set(collsion_data.velocity.x,player.physics_body.velocity.y + collsion_data.velocity.y,collsion_data.velocity.z);
+			player.movement_component.get_direction().copy(collsion_data.direction);
+			//player.physics_body.velocity.set(collsion_data.velocity.x,player.physics_body.velocity.y + collsion_data.velocity.y,collsion_data.velocity.z);
 		}
 		else {
+			player.movement_component.get_direction().set(0.0,0.0,0.0);
 			//setting is fine, but probably should have a dedicated stopping way
 			//player.physics_body.velocity.set(0.0, player.physics_body.velocity.y, 0.0);
 		}
