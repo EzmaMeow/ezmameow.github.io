@@ -1,5 +1,5 @@
 
-import {Vector3,Mesh,WebGLRenderer,PerspectiveCamera,Color,Box3Helper,SphereGeometry,MeshNormalMaterial} from 'three';
+import { Vector3, Mesh, WebGLRenderer, PerspectiveCamera, Color, Box3Helper, SphereGeometry, MeshNormalMaterial } from 'three';
 import * as Game_Utils from './game_utility.js'
 import * as CANNON from "https://esm.sh/cannon-es";
 import { Signal, State, Reactive_Object } from './game_core.js'
@@ -9,7 +9,6 @@ import { Maze_Level } from './maze_level.js'
 import { Resource_Manager } from './resource_manager.js'
 import { Input_Manager } from './input_manager.js'
 import { Player_Character } from './player_character.js'
-//import CannonDebugger from "https://esm.sh/cannon-es-debugger";
 
 const canvas = document.getElementById("game");
 const canvas_body = document.getElementById("canvas_body");
@@ -132,7 +131,7 @@ export class Maze_Game extends Game {
 		this.player = player;
 		//const camera = camera //new THREE.PerspectiveCamera(50, canvas_body.clientWidth / canvas_body.clientHeight, 0.001, 32);
 		//this.camera = camera;
-		camera.position.y = 0.5 * level.get_cell_size().y //could set the camera back, but left and right clip is worst without collsion bounds
+		camera.position.y = 0.5
 		player.add(camera);
 		this.settings = new State();
 		//may want to rename it to config or something since input manager handling the bulk of input. this will just handle settings
@@ -276,9 +275,6 @@ function startGame(maze_game) {
 	level.add(sphereMesh)
 
 
-
-	//test end
-	//const cannonDebugger = CannonDebugger(level, Maze_Game.world, { color: 0x00ff00 });
 	function loop() {
 		requestAnimationFrame(loop);
 
@@ -291,18 +287,19 @@ function startGame(maze_game) {
 		}
 		collsion_data.from.copy(player.position)
 		collsion_data.to.copy(player.position)
+		collsion_data.velocity.set(0, 0, 0);
 		moving = false;
 		let speed_mod = Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.SHIFT) ? 2.0 : 1.0
-		if (maze_game.debug_mode) { speed_mod *= 3.0 }
+		if (maze_game.debug_mode) { speed_mod *= 2.0 }
 		if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.FORWARD)) {
-			collsion_data.to.add(collsion_data.direction.multiplyScalar(player.speed * speed_mod * 1000.0));
+			collsion_data.to.add(collsion_data.direction.multiplyScalar(player.speed * speed_mod));
 			collsion_data.velocity.copy(collsion_data.direction);
 			collsion_data.velocity.multiplyScalar(player.speed * speed_mod);
 			moving = true;
-		}
-		if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.BACK)) {
+		}//need to redesign it. else if because it acts really odd when both are if. probably because of how direction is handled
+		else if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.BACK)) {
 			collsion_data.direction.negate();
-			collsion_data.to.add(collsion_data.direction.multiplyScalar(player.speed * speed_mod * 1000.0));
+			collsion_data.to.add(collsion_data.direction.multiplyScalar(player.speed * speed_mod));
 			collsion_data.velocity.copy(collsion_data.direction);
 			collsion_data.velocity.multiplyScalar(player.speed * speed_mod);
 			moving = true;
@@ -311,18 +308,27 @@ function startGame(maze_game) {
 		if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.LEFT)) { player.rotation.y += 0.05; }
 		if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.RIGHT)) { player.rotation.y -= 0.05; }
 
-		if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.UP) && maze_game.debug_mode) player.position.y += player.speed;
-		if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.DOWN) && maze_game.debug_mode) player.position.y -= player.speed;
+		if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.UP)) {
+			if (maze_game.debug_mode) {
+				collsion_data.velocity.y += 1.0;
+				moving = true;
+			}
+			player.jump();
+		}
+		else if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.DOWN) && maze_game.debug_mode) {
+			collsion_data.velocity.y -= 1.0;
+			moving = true;
+		}
 
 		if (moving) {
-			player.physics_body.velocity.copy(collsion_data.velocity);
+			player.physics_body.velocity.set(collsion_data.velocity.x,player.physics_body.velocity.y + collsion_data.velocity.y,collsion_data.velocity.z);
 		}
 		else {
 			//setting is fine, but probably should have a dedicated stopping way
-			player.physics_body.velocity.set(0.0, 0.0, 0.0);
+			//player.physics_body.velocity.set(0.0, player.physics_body.velocity.y, 0.0);
 		}
 
-		
+
 
 		maze_game.update(performance.now());
 		//Maze_Game.world.fixedStep();
@@ -343,9 +349,6 @@ function startGame(maze_game) {
 			maze_game.resize = false;
 		}
 
-		//if (maze_game.debug_mode) {
-		//cannonDebugger.update();
-		//}
 
 		level.get_cell_bounds(level.get_cell_position(player.position), box);
 		//TODO: try to move this to the update

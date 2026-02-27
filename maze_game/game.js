@@ -1,5 +1,6 @@
 import { Scene } from 'three';
 import { World, Vec3 } from "https://esm.sh/cannon-es";
+//import CannonDebugger from "https://esm.sh/cannon-es-debugger";
 
 export class Game {
     #world = new World({ gravity: new Vec3(0.0, -9.82, 0.0) });
@@ -58,6 +59,7 @@ export class Game {
 
     // performance.now()
     update(current_time) {
+        //const cannonDebugger = CannonDebugger(this.scene, this.world, { color: 0x00ff00 });
         const delta = (current_time - this.#last_time) / 1000.0;
         this.#last_time = current_time;
 
@@ -69,6 +71,10 @@ export class Game {
             object._physics_update(delta);
         }
         if (this.renderer && this.camera) {
+            //if(this.debug_mode && !this.disable_render_debugger){
+            //    this.disable_render_debugger = true;
+           //     cannonDebugger.update();
+           // }
             this.renderer.render(this.scene, this.camera);
         }
     }
