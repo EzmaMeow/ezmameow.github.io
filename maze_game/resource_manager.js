@@ -149,18 +149,21 @@ export class Resource_Manager {
             this.dispose_renderers();
         }
     }
-
-    load_resource(file, id, type, on_ready = null, source = null, loader = null) {
+    //decided to try to wrap it in a promise so it could be awaited, but kept the signals so await is not nessary
+    async load_resource(file, id, type, on_ready = null, source = null, loader = null) {
         if (type == Resource_Manager.KEYS.TYPES.TEXTURE) {
             source = this.#textures;
             loader = this.texture_loader;
         }
         if (source && loader) {
-            loader.load(file, (result) => {
-                this.set_resource(id, result, source);
-                if (on_ready) {
-                    on_ready(result);
-                }
+            return new Promise((resolve, reject) => {
+                loader.load(file, (result) => {
+                    this.set_resource(id, result, source);
+                    if (on_ready) {
+                        on_ready(result);
+                    }
+                    resolve = result;
+                },undefined, reject);
             });
         }
 

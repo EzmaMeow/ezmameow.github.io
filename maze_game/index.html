@@ -37,17 +37,37 @@
           <a>Near Plane<input type="number" id="near_plane" min="0.0001" max="1" step="0.0001" value="0.001"></a>
           <a>Far Plane<input type="number" id="far_plane" min="2" max="1000" step="5" value="100"></a>
           <a>FOV<input type="number" id="fov" min="5" max="120" step="1" value="50"></a>
+          <a>Light Intensity<input type="number" id="light_intensity" min="0.1" max="10" step="0.1" value="1.0"></a>
+          <a>Light Distance<input type="number" id="light_distance" min="0.0" max="100" step="1.0" value="0.0"></a>
+          <a>Light Decay<input type="number" id="light_decay" min="0.0" max="10" step="0.1" value="2.0"></a>
         </div>
       </div>
 
 
     </div>
-    <div class="subdiv-footer"><b>[wasd]</b> to move <br><b>[l]</b> for light<br><b>[`]</b> for debug mode</div>
+    <div class="subdiv-footer">
+      <div class="horizontal-container ">
+        <div>
+          <button class="key" data-key="w">W</button><br>
+          <button class="key" data-key="a">A</button>
+          <!--<button class="key" data-key="f">F</button>-->
+          <button class="key" data-key="d">D</button><br>
+          <button class="key" data-key="s">S</button>
+
+
+        </div>
+        <div><b>[wasd]</b> to move <br><b>[l]</b> for light</div>
+        <div>
+          <button class="key" data-key="e">Jump</button>
+          <button class="key" data-key="l">Light</button>
+        </div>
+      </div>
+    </div>
   </div>
 
-  
+
   <script type="module">
-    import {Maze_Game} from './maze_game.js';
+    import { Maze_Game } from './maze_game.js';
     import { convert_to_same_type } from './game_utility.js'
 
     const maze_game = new Maze_Game();
@@ -67,10 +87,46 @@
     function update_settings() {
       //NOTE: these might be store in a proper state if game take control of some of these values
       //then only the player assign values should be read.
+      //Also may be able to query by class (aka '.options') and use similar setting logic as the connected event
+      //probably could make it a function to use in both the event and here. just need to pass the source instead of value or allow both to be handled
       document.getElementById('far_plane').value = maze_game.camera.far;
       document.getElementById('near_plane').value = maze_game.camera.near;
       document.getElementById('fov').value = maze_game.camera.fov;
+
+      document.getElementById('light_intensity').value = maze_game.player.light.intensity;
+      document.getElementById('light_distance').value = maze_game.player.light.distance;
+      document.getElementById('light_decay').value = maze_game.player.light.decay;
     }
+
+    const key_buttons = document.querySelectorAll(".key");
+
+    function make_input_event(key_id ='') {
+      //NOTE: keyboard event may not be needed. it dose not contain any useful info
+      //and key is all that is needed. maybe code. id is an option and unessary. a flag for if it not an KeyboardEvent may be needed
+      return {
+        key: key_id,
+        code: `Key${key_id.toUpperCase()}`
+      }
+      //return new KeyboardEvent(id, {
+      //  bubbles: true,
+      //  key: key_id,
+      //  code: `Key${key_id.toUpperCase()}`
+      //})
+    }
+    // Handle button clicks
+    key_buttons.forEach(button => {
+      //may need an additional parameter for on_key calls since key and button presses may fight and may be better to store the is_pressed as a bitflag and have each source flag it as true. then can run other logic if state if iffy but not sure how
+      button.addEventListener("mousedown", () => {
+        maze_game.on_key_down(make_input_event(button.dataset.key));
+      }
+      );
+      button.addEventListener("mouseup", () => {
+        maze_game.on_key_up(make_input_event(button.dataset.key));
+      });
+      button.addEventListener("mouseleave", () => {
+        maze_game.on_key_up(make_input_event(button.dataset.key));
+      });
+    });
 
     //manage the drop down buttons logic
     const dropdown_menu = document.querySelector('.dropdown-menu');
@@ -87,12 +143,13 @@
     //this may be moved to game, but may stay for things unquie to this page
     //that the game may not need to worry about
     maze_game.settings.on_change.connect((key, new_value) => {
-      if (key.startsWith("camera.")) {
-        const property = key.split('.').pop();
-        if (property || property != 'camera') {
-          maze_game.camera[property] = convert_to_same_type(maze_game.camera[property], new_value);
-        }
+      const property = key.split('.').pop();
+      if (key.startsWith("camera.") && (property || property != 'camera')) {
+        maze_game.camera[property] = convert_to_same_type(maze_game.camera[property], new_value);
         maze_game.camera.updateProjectionMatrix();
+      }
+      else if (key.startsWith("light.") && (property || property != 'light')){
+        maze_game.player.light[property] = new_value;
       }
     });
 
@@ -100,7 +157,11 @@
     event_router(document.getElementById('far_plane'), "change", maze_game.settings, 'camera.far');
     event_router(document.getElementById('near_plane'), "change", maze_game.settings, 'camera.near');
     event_router(document.getElementById('fov'), "change", maze_game.settings, 'camera.fov');
-
+    event_router(document.getElementById('light_intensity'), "change", maze_game.settings, 'light.intensity');
+    event_router(document.getElementById('light_distance'), "change", maze_game.settings, 'light.distance');
+    event_router(document.getElementById('light_decay'), "change", maze_game.settings, 'light.decay');
+    //TODO CONNECT LIGHT AND UPDATE
+    
   </script>
 </body>
 

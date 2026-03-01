@@ -379,24 +379,34 @@ export class Maze_Level extends Level {
     //if levels need to be dynamicly added or removed, then this need to be called to clean up certain loose objects
 
     //todo: handle this better
-    load_resources() {
+    async load_resources() {
 
         const self = this;
-        this.resources.load_resource('assets/texture.png', 'texture', Resource_Manager.KEYS.TYPES.TEXTURE, (texture) => {
+        await this.resources.load_resource('assets/texture.png', 'texture', Resource_Manager.KEYS.TYPES.TEXTURE, (texture) => {
             self.default_wall_mat.map = texture;
             texture.wrapS = texture.wrapT = 1000;//THREE.RepeatWrapping
+            //note: awaitthing this function may not happen, so the needs updates will be state inside the on_ready
+            //but may need to find a place to set it once after all the loading is finished. the current approch is a bit of a mess
+            //and the texture loading probably should be handled before the level loading and the texture info should be define outside
+            //ideally with a text file override.
+            self.default_wall_mat.needsUpdate = true;
         });
-        this.resources.load_resource('assets/lightmap.png', 'lightmap', Resource_Manager.KEYS.TYPES.TEXTURE, (texture) => {
+        await this.resources.load_resource('assets/lightmap.png', 'lightmap', Resource_Manager.KEYS.TYPES.TEXTURE, (texture) => {
             //the lightmap is a test
             self.default_wall_mat.lightmap = texture;
             self.default_floor_mat.lightmap = texture;
             self.default_ceil_mat.lightmap = texture;
+            
+            self.default_wall_mat.needsUpdate = true;
+            self.default_floor_mat.needsUpdate = true;
+            self.default_ceil_mat.needsUpdate = true;
         });
 
     }
     constructor(canvas, world, source_image = Maze_Level.default_source_image) {
         super(world);
         this.resources = Resource_Manager.default_instance; //cache the Resource_Manager so it could be overrided
+        //may need to call loading before or after creating the level where it can be awaited
         this.load_resources();
         this.level_image = new Level_Image(source_image);
 
