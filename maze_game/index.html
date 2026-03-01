@@ -100,7 +100,7 @@
 
     const key_buttons = document.querySelectorAll(".key");
 
-    function make_input_event(key_id ='') {
+    function make_input_event(key_id = '') {
       //NOTE: keyboard event may not be needed. it dose not contain any useful info
       //and key is all that is needed. maybe code. id is an option and unessary. a flag for if it not an KeyboardEvent may be needed
       return {
@@ -126,6 +126,19 @@
       button.addEventListener("mouseleave", () => {
         maze_game.on_key_up(make_input_event(button.dataset.key));
       });
+      button.addEventListener('touchstart', function (event) {
+        event.preventDefault(); // stops selection/callout
+        maze_game.on_key_down(make_input_event(button.dataset.key));
+      }, { passive: false });
+
+      button.addEventListener('touchend', function (event) {
+        event.preventDefault();
+        maze_game.on_key_up(make_input_event(button.dataset.key));
+      });
+
+      button.addEventListener('touchcancel', () => {
+        maze_game.on_key_up(make_input_event(button.dataset.key));
+    });
     });
 
     //manage the drop down buttons logic
@@ -148,7 +161,7 @@
         maze_game.camera[property] = convert_to_same_type(maze_game.camera[property], new_value);
         maze_game.camera.updateProjectionMatrix();
       }
-      else if (key.startsWith("light.") && (property || property != 'light')){
+      else if (key.startsWith("light.") && (property || property != 'light')) {
         maze_game.player.light[property] = new_value;
       }
     });
@@ -161,7 +174,7 @@
     event_router(document.getElementById('light_distance'), "change", maze_game.settings, 'light.distance');
     event_router(document.getElementById('light_decay'), "change", maze_game.settings, 'light.decay');
     //TODO CONNECT LIGHT AND UPDATE
-    
+
   </script>
 </body>
 
