@@ -105,8 +105,9 @@ export class Maze_Game extends Game {
 	on_touch_move(event) {
 		event.preventDefault()
 		if (event.touches.length > 0) {
-			let movement_x = event.touches[0] - this.input_state.touch_start_x;
-			let movement_y = event.touches[0] - this.input_state.touch_start_y;
+			let movement_x = Math.min(Math.max(event.touches[0] - this.input_state.touch_start_x, -1.0), 1.0);
+			let movement_y = Math.min(Math.max(event.touches[0] - this.input_state.touch_start_y, -1.0), 1.0);
+			
 			this.player.rotation.y -= movement_x * this.input_state.touchSensitivity;
 			if ((this.camera.rotation.x < 1.0 && movement_y < 0) || (this.camera.rotation.x > -1.0 && movement_y > 0)) {
 				this.camera.rotation.x -= movement_y * this.input_state.touchSensitivity;
@@ -165,16 +166,16 @@ export class Maze_Game extends Game {
 		document.addEventListener('mouseup', event => this.on_mouse_up(event));
 		document.addEventListener('mousemove', event => this.on_mouse_move(event));
 		canvas.addEventListener('touchmove', event => this.on_touch_move(event));
-		canvas.addEventListener('touchstart', function (event, input_state = this.input_state) {
+		canvas.addEventListener('touchstart', function (event) {
 			if (event.touches.length > 0) {
 				input_state.touch_start_x = event.touches[0].clientX;
 				input_state.touch_start_y = event.touches[0].clientY;
 			}
 		}, { passive: true });
-		document.addEventListener('touchend', function (event, input_state = this.input_state) {
-			input_state.touch_start_x = 0.0;
-			input_state.touch_start_y = 0.0;
-		}, { passive: true });
+		//document.addEventListener('touchend', function (event, input_state = this.input_state) {
+		//	input_state.touch_start_x = 0.0;
+		//	input_state.touch_start_y = 0.0;
+		//}, { passive: true });
 
 		window.addEventListener('resize', () => this.on_window_resize());
 
