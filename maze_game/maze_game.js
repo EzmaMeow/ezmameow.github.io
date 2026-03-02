@@ -105,8 +105,8 @@ export class Maze_Game extends Game {
 	on_touch_move(event) {
 		event.preventDefault()
 		if (event.touches.length > 0) {
-			let movement_x = Math.min(Math.max(event.touches[0] - this.input_state.touch_start_x, -1.0), 1.0);
-			let movement_y = Math.min(Math.max(event.touches[0] - this.input_state.touch_start_y, -1.0), 1.0);
+			let movement_x = Math.min(Math.max(event.touches[0].clientX - this.input_state.touch_start_x, -1.0), 1.0);
+			let movement_y = Math.min(Math.max(event.touches[0].clientY - this.input_state.touch_start_y, -1.0), 1.0);
 			
 			this.player.rotation.y -= movement_x * this.input_state.touchSensitivity;
 			if ((this.camera.rotation.x < 1.0 && movement_y < 0) || (this.camera.rotation.x > -1.0 && movement_y > 0)) {
