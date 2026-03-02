@@ -106,9 +106,9 @@ export class Maze_Game extends Game {
 		if (event.touches.length === 1) {
 			const movement_x = event.touches[0].clientX;
 			const movement_y = event.touches[0].clientY;
-			this.player.rotation.y -= movement_x * this.input_state.mouseSensitivity;
+			this.player.rotation.y -= movement_x * this.input_state.mouseSensitivity *0.01;
 			if ((this.camera.rotation.x < 1.0 && movement_y < 0) || (this.camera.rotation.x > -1.0 && movement_y > 0)) {
-				this.camera.rotation.x -= movement_y * this.input_state.mouseSensitivity;
+				this.camera.rotation.x -= movement_y * this.input_state.mouseSensitivity*0.01;
 			}
 		}
 	}
