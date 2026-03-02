@@ -9,13 +9,12 @@ import { Maze_Level } from './maze_level.js'
 import { Resource_Manager } from './resource_manager.js'
 import { Input_Manager } from './input_manager.js'
 import { Player_Character } from './player_character.js'
+import { Controller } from './controller.js'
 
 const canvas = document.getElementById("game");
 const canvas_body = document.getElementById("canvas_body");
 
-//data for use with collsions. it should stay in memory, but get reset after each use
-//sometime maybe partly reset when detecting several collsions, but the old data would
-//need to be used or store before the next check
+//TODO: remove this and try to have the vectors self conatin in the object that handles it (aka player/character)
 export class Collsion_Data {
 	constructor() {
 		this.collided = false;
@@ -27,21 +26,7 @@ export class Collsion_Data {
 		this.velocity = new Vector3();
 	}
 }
-//a share state about the world such as getting objects in
-//the world and collsion checks as well as varibles that may be needed
-export class World_State {
-	line_trace = (x, y) => {
-		return {}
-	}
-	constructor() {
-	}
-}
 
-//NOTE object.updateMatrixWorld() for world position in cases where positions
-//of children becomes reltive to the parent
-
-//player might be part of maze.js or it could be part of game_core.js
-//but most likly a character object will be added to core and player stay here while extending that character
 
 
 export class Maze_Game extends Game {
@@ -95,6 +80,7 @@ export class Maze_Game extends Game {
 		if (this.input_state.enable_mouse) {
 			const movement_x = event.movementX || event.mozMovementX || event.webkitMovementX || 0.0;
 			const movement_y = event.movementY || event.mozMovementY || event.webkitMovementY || 0.0;
+			//this.player.physics_body.angularVelocity.set(0, movement_x * this.input_state.touchSensitivity, 0);
 			this.player.rotation.y -= movement_x * this.input_state.mouseSensitivity;
 			if ((this.camera.rotation.x < 1.0 && movement_y < 0) || (this.camera.rotation.x > -1.0 && movement_y > 0)) {
 				this.camera.rotation.x -= movement_y * this.input_state.mouseSensitivity;
@@ -105,10 +91,11 @@ export class Maze_Game extends Game {
 	on_touch_move(event) {
 		event.preventDefault()
 		if (event.touches.length > 0) {
-			let movement_x = Math.min(Math.max(event.touches[0].clientX - this.input_state.touch_start_x, -10.0), 10.0);
-			let movement_y = Math.min(Math.max(event.touches[0].clientY - this.input_state.touch_start_y, -10.0), 10.0);
+			let movement_x = Math.min(Math.max(event.touches[0].clientX - this.input_state.touch_start_x, -100.0), 100.0);
+			let movement_y = Math.min(Math.max(event.touches[0].clientY - this.input_state.touch_start_y, -100.0), 100.0);
 			this.input_state.touch_start_x = event.touches[0].clientX;
 			this.input_state.touch_start_y = event.touches[0].clientY;
+			//this.player.physics_body.angularVelocity.set(0, movement_x * this.input_state.touchSensitivity, 0);
 			this.player.rotation.y -= movement_x * this.input_state.touchSensitivity;
 			if ((this.camera.rotation.x < 1.0 && movement_y < 0) || (this.camera.rotation.x > -1.0 && movement_y > 0)) {
 				this.camera.rotation.x -= movement_y * this.input_state.touchSensitivity;
@@ -138,7 +125,8 @@ export class Maze_Game extends Game {
 		this.renderer.setSize(canvas_body.clientWidth, canvas_body.clientHeight);
 		this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2.0));
 		const level_image = level.level_image;
-		const player = new Player_Character();
+		this.player_controller = new Controller(); //NOTE: setting it to the maze game and have a const may be overkill, but it is here for now untill i decide on which approch is better
+		const player = new Player_Character({'controller':this.player_controller});
 		this.player = player;
 		//const camera = camera //new THREE.PerspectiveCamera(50, canvas_body.clientWidth / canvas_body.clientHeight, 0.001, 32);
 		//this.camera = camera;
@@ -169,91 +157,6 @@ export class Maze_Game extends Game {
 		canvas.addEventListener('touchmove', event => this.on_touch_move(event));
 
 		window.addEventListener('resize', () => this.on_window_resize());
-
-		this.world_state = new World_State();
-		//maybe leave line trace as a normal function, but parts of it can be reassign
-		//would need to redesign the lookup to get an array of object
-		//also could leave it as part of the scene, but I rather split it since scene for rendering
-		//world is for collsion and maybe physics or a hook for physics
-		this.world_state.line_trace = (from_position, to_position) => {
-			//use the pass x,y,z if old point to desire new point
-			//may need to rename it and have it return an object about the collsion
-			const static_objects = [];
-			const results = {
-				collsion: false,
-				intersection: to_position.clone(),
-			}
-			//should also get a collection of anything that intersects the from->to line
-
-			let cells = Game_Utils.line_supercover(level.get_cell_position(from_position), this.level.get_cell_position(to_position));
-			let last_pixel_info = level_image.get_pixel_info(level_image.convert_coord_to_index(from_position.x, from_position.z));
-			cells.forEach((cell_position) => {
-				let pixel_info = level_image.get_pixel_info(level_image.convert_coord_to_index(cell_position.x, cell_position.z));
-				if (level.is_wall(pixel_info)) {
-					results.collsion = true;
-					//The current grid system is fine, though should try to get use to boxes and rays. dynamic objects would be
-					//more about if they collide though may still need the point it hits
-					//TODO: try to remake this to pass a direction and mag instead of the caculated to_position
-					//also move some annoying yet useful logic in game ultil
-					//also need to figure out adding space around the player. should try again maybe after remaking this
-					//and returning useful information. the position will be a distance away from the from_position and
-					// position should be unchange if from_position dose not change. also the to_position is not for the camera
-					//but for the edge of the circle so more like projecting and retracting the points by a step
-					if (last_pixel_info == null) {
-						results.intersection.copy(from_position);
-						return results
-					}
-					if (pixel_info == null) {
-						pixel_info = last_pixel_info;
-					}
-					let coord_x_step = from_position.x > to_position.x ? last_pixel_info.x - 1 : last_pixel_info.x + 1;
-					let coord_y_step = from_position.z > to_position.z ? last_pixel_info.y - 1 : last_pixel_info.y + 1;
-					let adj_pixel_info = level_image.get_pixel_info(level_image.convert_coord_to_index(coord_x_step, last_pixel_info.y))
-					if (level.is_wall(adj_pixel_info)) {
-						//the attept to set point near wall have bugs such as clipping certain corridor walls. the collsion functon may be able to solve it
-						//if (step_direction.x > 0){
-						//	results.intersection.x = Math.floor(to_position.x) - 0.002;
-						//}
-						//else if (step_direction.x < 0){
-						//	results.intersection.x = Math.ceil(to_position.x) + 0.002;
-						//}
-						//else{
-						results.intersection.x = from_position.x
-						//}
-
-
-					}
-					adj_pixel_info = level_image.get_pixel_info(level_image.convert_coord_to_index(last_pixel_info.x, coord_y_step))
-					if (level.is_wall(adj_pixel_info)) {
-						//if (step_direction.z > 0){
-						//	results.intersection.z = Math.floor(to_position.z) - 0.002;
-						//}
-						//else if (step_direction.z < 0){
-						//	results.intersection.z = Math.ceil(to_position.z) + 0.002;
-						//}
-						//else{
-						results.intersection.z = from_position.z
-						//}
-					}
-					return results;
-				}
-				last_pixel_info = pixel_info;
-			});
-
-			return results;
-
-		}
-		//the new way(maybe) to handle collsions
-		//first it project the collider at its points for any collsions and return if there is any
-		//but no point is needed unless it trying to push back against the collider. the results need
-		//to state no move is possible. also could not return hand handle sliding cases.
-		//then if there no collsion, move the collider along the distance untill there is one
-		//and if there is one, either stop and let next update handle slide or handle the slide
-		//NOTE: the collider may need to be a specail object with collider getter and properties
-		//or it can assume defualt properties if none is provided (so if a object, may need to inject the properties into the collider from the getter)
-		this.world_state.project_collison = (collider, direction, distance, results = {}) => {
-
-		};
 	}
 }
 
@@ -266,6 +169,7 @@ function startGame(maze_game) {
 	const level = maze_game.level;
 	const player = maze_game.player;
 	const camera = maze_game.camera;
+	const player_controller = maze_game.player_controller;
 
 	//box test
 	//const box = level.get_cell_bounds();
@@ -277,9 +181,9 @@ function startGame(maze_game) {
 	let moving = false;
 
 	//tests
-	const radius = 0.24 // m
+	const radius = 0.5 // m
 	const sphereBody = new CANNON.Body({
-		mass: 5, // kg
+		mass: 50, // kg
 		shape: new CANNON.Sphere(radius),
 	})
 	sphereBody.position.set(-10, 100, -10) // m
@@ -304,20 +208,19 @@ function startGame(maze_game) {
 		collsion_data.to.copy(player.position)
 		collsion_data.velocity.set(0, 0, 0);
 		moving = false;
-		let speed_mod = Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.SHIFT) ? 2.0 : 1.0
+		player_controller.states.speed = 0;
+		//NOTE: the speed mod is really the controller.states.speed if moving.
+		let speed_mod = Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.SHIFT) ? 2 : 1
 		if (maze_game.debug_mode) { speed_mod *= 2.0 }
 		if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.FORWARD)) {
-			collsion_data.to.add(collsion_data.direction.multiplyScalar(player.speed * speed_mod));
-			collsion_data.velocity.copy(collsion_data.direction);
-			collsion_data.velocity.multiplyScalar(player.speed * speed_mod);
-			moving = true;
+
+			Game_Utils.get_forward_direction(player.physics_body,player_controller.direction);
+			player_controller.states.speed = speed_mod;
 		}//need to redesign it. else if because it acts really odd when both are if. probably because of how direction is handled
 		else if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.BACK)) {
-			collsion_data.direction.negate();
-			collsion_data.to.add(collsion_data.direction.multiplyScalar(player.speed * speed_mod));
-			collsion_data.velocity.copy(collsion_data.direction);
-			collsion_data.velocity.multiplyScalar(player.speed * speed_mod);
-			moving = true;
+			Game_Utils.get_forward_direction(player.physics_body,player_controller.direction);
+			player_controller.direction.scale(-1,player_controller.direction);
+			player_controller.states.speed = speed_mod;
 		}
 
 		if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.LEFT)) { player.rotation.y += 0.05; }
@@ -325,28 +228,16 @@ function startGame(maze_game) {
 
 		if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.UP)) {
 			if (maze_game.debug_mode) {
-				collsion_data.velocity.y += 1.0;
-				moving = true;
+				player_controller.direction.y += 1.0;
+				player_controller.states.speed = speed_mod;
 			}
-			player.jump();
+			player_controller.trigger_action(player_controller.ACTIONS.JUMP)
+			//player.jump();
 		}
 		else if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.DOWN) && maze_game.debug_mode) {
-			collsion_data.velocity.y -= 1.0;
-			moving = true;
+			player_controller.direction.y -= 1.0;
+			player_controller.states.speed = speed_mod;
 		}
-
-		if (moving) {
-			//NOTE: should handle speed when character or component handles input.
-			player.movement_component.get_direction().copy(collsion_data.direction);
-			//player.physics_body.velocity.set(collsion_data.velocity.x,player.physics_body.velocity.y + collsion_data.velocity.y,collsion_data.velocity.z);
-		}
-		else {
-			player.movement_component.get_direction().set(0.0, 0.0, 0.0);
-			//setting is fine, but probably should have a dedicated stopping way
-			//player.physics_body.velocity.set(0.0, player.physics_body.velocity.y, 0.0);
-		}
-
-
 
 		maze_game.update(performance.now());
 		//Maze_Game.world.fixedStep();

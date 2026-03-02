@@ -1,7 +1,8 @@
-import { Vec3, Ray} from "https://esm.sh/cannon-es";
+import { Vec3, Ray } from "https://esm.sh/cannon-es";
+import { Controller } from './controller.js'
+import { VEC3, get_forward_direction } from './game_utility.js'
 
 export class Movement_Component {
-    static #DOWN_VECTOR = new Vec3(0, -1, 0); static get DOWN_VECTOR(){return this.#DOWN_VECTOR;}
     world = null; //This will interface with the world
     #body = null; get body() { return this.#body } //this should have at least a single body to focus on.
     set body(value) {
@@ -16,7 +17,8 @@ export class Movement_Component {
     }
 
     #max_speed = 5.0; //speed will be move here instead of player since it regulates the moving the body
-    acceleration = 1.0;
+    speed_mod = 1.0; 
+    acceleration = 5.0;
     on_ground = false;
     last_collide = {
         normal: new Vec3(),
@@ -24,25 +26,27 @@ export class Movement_Component {
     }
     velocity_change = new Vec3();
     //NOTE: controller will have signals such as action(jump) that need to be manage. some actions the player or other systems will manage
-    controller = null; //this is reserve for a controller object which regulates how the movement component changes. direction will be pulled from it if it is vaild
-    get_speed() {
-        if (this.controller && this.controller.speed_mod) {
-            return this.#max_speed * this.controller.speed_mod;
+    #controller; 
+    get controller() {
+        if (!this.#controller) {
+            this.#controller = new Controller();
+            this.controller.on_action.connect(()=>this.jump());
         }
-        return this.#max_speed; //may use a getter to overide what is the max speed so sprint can be inserted
+        return this.#controller
     }
-    get_direction() {
-        if (this.controller && this.controller.direction) {return this.controller.direction}
-        //override function to get the movement directional vector
-        //by default it will create a vector to use
-        if (this.direction) { return this.direction }
-        this.direction = new Vec3();
-        return this.direction;
+    set controller(new_controller) {
+        const old_controller = this.#controller;
+        this.#controller = new_controller;
+        if (this.#controller){this.#controller.on_action.connect(()=>this.jump());}
+        if (old_controller){old_controller.on_action.disconnect(()=>old_controller.jump());}
     }
-    is_ascending(){
+    get_speed() {
+        return this.#max_speed * this.controller.states.speed * this.speed_mod;
+    }
+    is_ascending() {
         return (this.body.velocity.y > 0.5)
     }
-    is_descending(){
+    is_descending() {
         return (this.body.velocity.y < -0.5)
     }
     is_on_ground() {
@@ -72,24 +76,27 @@ export class Movement_Component {
         if (event.contact.bi.id === component.body.id) {
             component.last_collide.normal.negate();
         }
-        if (component.last_collide.normal.dot(Movement_Component.DOWN_VECTOR) > 0.5) {
+        if (component.last_collide.normal.dot(VEC3.DOWN) > 0.5) {
             component.on_ground = true;
         }
 
     }
-    jump(){
-        if (this.is_on_ground()){
+    jump() {
+        if (this.is_on_ground()) {
             this.body.velocity.y = this.body.velocity.y + 6.0;
             this.on_ground = false;
         }
     }
     physics_update(delta = 1.0) {
-        if (this.get_direction().lengthSquared() === 0 || !(this.body)) {
+        if (this.controller.direction.lengthSquared() === 0 || !this.body) {
             return;
         };
-        this.get_direction().scale(this.acceleration,this.velocity_change)
+        this.controller.direction.scale(this.acceleration, this.velocity_change)
         if (this.body.velocity.length() < this.get_speed()) {
             this.body.velocity.vadd(this.velocity_change, this.body.velocity)
         }
+    }
+    constructor(controller = new Controller()){
+        this.controller = controller;
     }
 }

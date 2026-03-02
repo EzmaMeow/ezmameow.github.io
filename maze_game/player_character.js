@@ -2,15 +2,18 @@ import { Vector3, PointLight } from 'three';
 import { Cylinder, Body, Sphere, Vec3, Ray, RaycastResult } from "https://esm.sh/cannon-es";
 import { Physics_Object } from './game_objects.js'
 import { Movement_Component } from './movement_component.js'
+import { Controller } from './controller.js';
 
 export class Player_Character extends Physics_Object {
     //TODO: Move all the player base logic here and maybe create a dedicated character object
     speed = 2.00;
     camera = null;
-    movement_component = new Movement_Component();
+    movement_component; //decide if this should be protected or not.
 
-    _physics_update(delta=1.0) {
-        if (this.movement_component){
+    _physics_update(delta = 1.0) {
+
+        if (this.movement_component) {
+
             this.movement_component.physics_update(delta)
         }
         //console.log(this.on_ground)
@@ -18,20 +21,34 @@ export class Player_Character extends Physics_Object {
         this.position.copy(this.physics_body.position)
         //below is not needed to prevent messing with viewing
         //this.quaternion.copy(this.body.quaternion)
+        //we may use the object rotations and such since it is easier to modify
+        //but may need to be converted back and done the harder way if we want forces to influances(this project dose not expect that)
+        this.physics_body.quaternion.copy(this.quaternion)
     }
     _add_physics(world) {
         super._add_physics(world);
         this.movement_component.world = world;
     }
-    jump(){
+    jump() {
         this.movement_component.jump();
     }
 
     constructor(options = {
         'position': new Vector3(),
+        'controller': new Controller(),
+        'Movement_Component':Movement_Component
     }) {
         super();
+        //Note options keys that uses cap first letters ref to class ref
+        const movement_component_class = options['Movement_Component'] ? options['Movement_Component'] : Movement_Component
         if (options['position']) { this.position.copy(options['position']) }
+        if (options['controller']) {
+            //decide if a movement component class should be pass and how to handle ir
+            this.movement_component = new movement_component_class(options['controller'])
+        }
+        else{
+            this.movement_component = new movement_component_class();
+        }
         let height = 1.0;
         let radius = 0.25;
         this.physics_body = new Body({

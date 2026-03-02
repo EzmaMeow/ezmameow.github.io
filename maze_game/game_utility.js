@@ -1,5 +1,15 @@
 import { Vector3 } from 'three';
+import { Vec3 } from "https://esm.sh/cannon-es";
 
+//Vec3 consts
+export class VEC3{
+    static #UP = new Vec3(0.0, 1.0, 0.0); static get UP() { return this.#UP; }
+    static #DOWN = new Vec3(0.0, -1.0, 0.0); static get DOWN() { return this.#DOWN; }
+    static #FORWARD = new Vec3(0.0, 0.0, -1.0); static get FORWARD() { return this.#FORWARD; }
+    static #BACK = new Vec3(0.0, 0.0, 1.0); static get BACK() { return this.#BACK; }
+    static #RIGHT = new Vec3(1.0, 0.0, 0.0); static get RIGHT() { return this.#RIGHT; }
+    static #LEFT = new Vec3(-1.0, 0.0, 0.0); static get LEFT() { return this.#LEFT; }
+}
 //NOTE: Maybe should allow remapping of vector or do not depend on threejs vector
 //if using a generic vector type, then all results would need to be converted to
 //the desire vector class. may keep it for threejs and modify it for other projects
@@ -29,24 +39,24 @@ export function decode_cell_id(R) {
     if (R < 8) {
         return {
             type: "flag",
-            area:  (R & 1) ? 1 : 0,
+            area: (R & 1) ? 1 : 0,
             floor: (R & 2) ? 1 : 0,
-            ceil:  (R & 4) ? 1 : 0
+            ceil: (R & 4) ? 1 : 0
         };
     }
 
     // TILE REGION (8–255)
     const value = R - 8;
 
-    const area_id  = value % 16; //0–15 // none, wall, trap, safe up, unsafe up, safe volume, unsafe volume, ...reserver wall shapes
+    const area_id = value % 16; //0–15 // none, wall, trap, safe up, unsafe up, safe volume, unsafe volume, ...reserver wall shapes
     const floor_id = Math.floor(value / 16) % 8; // 0–7 // maybe none, floor, safe down, unsafe down ,safe liquid, unsafe liquid, misc 
-    const ceil_id  = Math.floor(value / 128); // 0–3 //provably none, full, hole, and misc. mostly for visual
+    const ceil_id = Math.floor(value / 128); // 0–3 //provably none, full, hole, and misc. mostly for visual
 
     return {
         type: "tile",
-        area:  area_id,
+        area: area_id,
         floor: floor_id,
-        ceil:  ceil_id
+        ceil: ceil_id
     };
 }
 
@@ -57,8 +67,8 @@ export function encode_cell_id(wall, floor, ceil) {
 
     if (wall <= 1 && floor <= 1 && ceil <= 1) {
         return (wall ? 1 : 0) |
-               (floor ? 2 : 0) |
-               (ceil ? 4 : 0);
+            (floor ? 2 : 0) |
+            (ceil ? 4 : 0);
     }
 
     return 8 + wall + (floor * 16) + (ceil * 128);
@@ -165,5 +175,13 @@ export function is_vector_valid(vector) {
     return false;
 }
 
+export function get_forward_direction(body, target = new Vec3(0.0, 0.0, 0.0), forward_vector = VEC3.FORWARD) {
+    body.quaternion.vmult(forward_vector, target)
+    target.normalize();
+    return target;
+}
 
-export default { line_supercover, get_step_direction, get_abs_distance, get_cell_coords, get_cell_position, is_vector_valid, convert_to_same_type }
+export default { 
+    VEC3, line_supercover, get_step_direction, get_abs_distance, get_cell_coords, get_cell_position, is_vector_valid, convert_to_same_type, 
+    get_forward_direction 
+}
