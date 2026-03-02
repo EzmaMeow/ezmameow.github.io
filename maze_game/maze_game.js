@@ -147,7 +147,7 @@ export class Maze_Game extends Game {
 		//may want to rename it to config or something since input manager handling the bulk of input. this will just handle settings
 		const input_state = {
 			mouseSensitivity: 0.01,
-			touchSensitivity: 0.0001,
+			touchSensitivity: 0.01,
 			enable_mouse: false,
 			touch_start_x: 0.0,
 			touch_start_y: 0.0
