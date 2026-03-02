@@ -101,22 +101,22 @@ export class Maze_Game extends Game {
 			}
 		}
 	}
+	//NOTE: this dose not work. look it up more and try to figure out the values or figure out how to open dev tools in mobile
 	on_touch_move(event) {
 		event.preventDefault()
 		if (event.touches.length > 0) {
 			let movement_x = 0.0;
 			let movement_y = 0.0;
-
 			for (const touch of event.touches) {
 				const change_x = touch.clientX;
 				const change_y = touch.clientY;
 				movement_x += change_x;
 				movement_y += change_y;
 			}
-			this.player.rotation.y -= movement_x * this.input_state.touchSensitivity * 0.01;
-			if ((this.camera.rotation.x < 1.0 && movement_y < 0) || (this.camera.rotation.x > -1.0 && movement_y > 0)) {
-				this.camera.rotation.x -= movement_y * this.input_state.touchSensitivity;
-			}
+			this.player.rotation.y -= movement_x * this.input_state.touchSensitivity;
+			//if ((this.camera.rotation.x < 1.0 && movement_y < 0) || (this.camera.rotation.x > -1.0 && movement_y > 0)) {
+			//	this.camera.rotation.x -= movement_y * this.input_state.touchSensitivity;
+			//}
 		}
 	}
 	on_window_resize() {
