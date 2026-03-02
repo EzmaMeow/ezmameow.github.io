@@ -287,7 +287,7 @@ function startGame(maze_game) {
 
 
 	function loop() {
-		this.touch_moved_handled = 0;
+		maze_game.touch_moved_handled = 0;
 		requestAnimationFrame(loop);
 
 		if (maze_game.debug_mode) {
