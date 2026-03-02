@@ -93,15 +93,23 @@ export class Maze_Game extends Game {
 	}
 	on_mouse_move(event) {
 		if (this.input_state.enable_mouse) {
-			const movementX = event.movementX || event.mozMovementX || event.webkitMovementX || 0.0;
-			const movementY = event.movementY || event.mozMovementY || event.webkitMovementY || 0.0;
-			this.player.rotation.y -= movementX * this.input_state.mouseSensitivity;
-			if ((this.camera.rotation.x < 1.0 && movementY < 0) || (this.camera.rotation.x > -1.0 && movementY > 0)) {
-				this.camera.rotation.x -= movementY * this.input_state.mouseSensitivity;
+			const movement_x = event.movementX || event.mozMovementX || event.webkitMovementX || 0.0;
+			const movement_y = event.movementY || event.mozMovementY || event.webkitMovementY || 0.0;
+			this.player.rotation.y -= movement_x * this.input_state.mouseSensitivity;
+			if ((this.camera.rotation.x < 1.0 && movement_y < 0) || (this.camera.rotation.x > -1.0 && movement_y > 0)) {
+				this.camera.rotation.x -= movement_y * this.input_state.mouseSensitivity;
 			}
-
-
-
+		}
+	}
+	on_touch_move(event) {
+		event.preventDefault()
+		if (event.touches.length === 0) {
+			const movement_x = event.touches[0].clientX;
+			const movement_y = event.touches[0].clientY;
+			this.player.rotation.y -= movement_x * this.input_state.mouseSensitivity;
+			if ((this.camera.rotation.x < 1.0 && movement_y < 0) || (this.camera.rotation.x > -1.0 && movement_y > 0)) {
+				this.camera.rotation.x -= movement_y * this.input_state.mouseSensitivity;
+			}
 		}
 	}
 	on_window_resize() {
@@ -152,6 +160,7 @@ export class Maze_Game extends Game {
 		document.addEventListener('mousedown', event => this.on_mouse_down(event));
 		document.addEventListener('mouseup', event => this.on_mouse_up(event));
 		document.addEventListener('mousemove', event => this.on_mouse_move(event));
+		canvas.addEventListener('touchmove', event => this.on_touch_move(event));
 
 		window.addEventListener('resize', () => this.on_window_resize());
 
@@ -326,7 +335,7 @@ function startGame(maze_game) {
 			//player.physics_body.velocity.set(collsion_data.velocity.x,player.physics_body.velocity.y + collsion_data.velocity.y,collsion_data.velocity.z);
 		}
 		else {
-			player.movement_component.get_direction().set(0.0,0.0,0.0);
+			player.movement_component.get_direction().set(0.0, 0.0, 0.0);
 			//setting is fine, but probably should have a dedicated stopping way
 			//player.physics_body.velocity.set(0.0, player.physics_body.velocity.y, 0.0);
 		}
