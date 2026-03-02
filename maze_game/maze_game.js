@@ -103,10 +103,17 @@ export class Maze_Game extends Game {
 	}
 	on_touch_move(event) {
 		event.preventDefault()
-		if (event.touches.length === 1) {
-			const movement_x = event.touches[0].clientX;
-			const movement_y = event.touches[0].clientY;
-			this.player.rotation.y -= movement_x * this.input_state.touchSensitivity *0.01;
+		if (event.touches.length > 0) {
+			let movement_x = 0.0;
+			let movement_y = 0.0;
+
+			for (const touch of event.touches) {
+				const change_x = event.touch.clientX;
+				const change_y = event.touch.clientY;
+				movement_x += change_x;
+				movement_y += change_y;
+			}
+			this.player.rotation.y -= movement_x * this.input_state.touchSensitivity * 0.01;
 			if ((this.camera.rotation.x < 1.0 && movement_y < 0) || (this.camera.rotation.x > -1.0 && movement_y > 0)) {
 				this.camera.rotation.x -= movement_y * this.input_state.touchSensitivity;
 			}
