@@ -103,7 +103,7 @@ export class Maze_Game extends Game {
 	}
 	on_touch_move(event) {
 		event.preventDefault()
-		if (event.touches.length === 0) {
+		if (event.touches.length === 1) {
 			const movement_x = event.touches[0].clientX;
 			const movement_y = event.touches[0].clientY;
 			this.player.rotation.y -= movement_x * this.input_state.mouseSensitivity;
