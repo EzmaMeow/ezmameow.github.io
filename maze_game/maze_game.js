@@ -160,7 +160,7 @@ export class Maze_Game extends Game {
 		document.addEventListener('mousedown', event => this.on_mouse_down(event));
 		document.addEventListener('mouseup', event => this.on_mouse_up(event));
 		document.addEventListener('mousemove', event => this.on_mouse_move(event));
-		canvas.addEventListener('touchmove', event => this.on_touch_move(event));
+		document.addEventListener('touchmove', event => this.on_touch_move(event));
 
 		window.addEventListener('resize', () => this.on_window_resize());
 
