@@ -108,8 +108,8 @@ export class Maze_Game extends Game {
 			let movement_y = 0.0;
 
 			for (const touch of event.touches) {
-				const change_x = event.touch.clientX;
-				const change_y = event.touch.clientY;
+				const change_x = touch.clientX;
+				const change_y = touch.clientY;
 				movement_x += change_x;
 				movement_y += change_y;
 			}
