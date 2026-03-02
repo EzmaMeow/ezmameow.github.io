@@ -103,15 +103,13 @@ export class Maze_Game extends Game {
 	}
 	on_touch_move(event) {
 		event.preventDefault()
-		if (this.touch_moved_handled > 3) { return }
 		if (event.touches.length === 1) {
 			const movement_x = event.touches[0].clientX;
 			const movement_y = event.touches[0].clientY;
-			this.player.rotation.y -= movement_x * this.input_state.mouseSensitivity *0.01;
+			this.player.rotation.y -= movement_x * this.input_state.touchSensitivity *0.01;
 			if ((this.camera.rotation.x < 1.0 && movement_y < 0) || (this.camera.rotation.x > -1.0 && movement_y > 0)) {
-				this.camera.rotation.x -= movement_y * this.input_state.mouseSensitivity*0.01;
+				this.camera.rotation.x -= movement_y * this.input_state.touchSensitivity;
 			}
-			this.touch_moved_handled += this.touch_moved_handled ? 1 : 0;
 		}
 	}
 	on_window_resize() {
@@ -147,6 +145,7 @@ export class Maze_Game extends Game {
 		//may want to rename it to config or something since input manager handling the bulk of input. this will just handle settings
 		const input_state = {
 			mouseSensitivity: 0.01,
+			touchSensitivity: 0.0001,
 			enable_mouse: false,
 		};
 		this.input_state = input_state;
@@ -287,7 +286,6 @@ function startGame(maze_game) {
 
 
 	function loop() {
-		maze_game.touch_moved_handled = 0;
 		requestAnimationFrame(loop);
 
 		if (maze_game.debug_mode) {
