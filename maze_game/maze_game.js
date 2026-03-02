@@ -103,6 +103,7 @@ export class Maze_Game extends Game {
 	}
 	on_touch_move(event) {
 		event.preventDefault()
+		if (this.touch_moved_handled > 3) { return }
 		if (event.touches.length === 1) {
 			const movement_x = event.touches[0].clientX;
 			const movement_y = event.touches[0].clientY;
@@ -110,6 +111,7 @@ export class Maze_Game extends Game {
 			if ((this.camera.rotation.x < 1.0 && movement_y < 0) || (this.camera.rotation.x > -1.0 && movement_y > 0)) {
 				this.camera.rotation.x -= movement_y * this.input_state.mouseSensitivity*0.01;
 			}
+			this.touch_moved_handled += this.touch_moved_handled ? 1 : 0;
 		}
 	}
 	on_window_resize() {
@@ -160,7 +162,7 @@ export class Maze_Game extends Game {
 		document.addEventListener('mousedown', event => this.on_mouse_down(event));
 		document.addEventListener('mouseup', event => this.on_mouse_up(event));
 		document.addEventListener('mousemove', event => this.on_mouse_move(event));
-		document.addEventListener('touchmove', event => this.on_touch_move(event));
+		canvas.addEventListener('touchmove', event => this.on_touch_move(event));
 
 		window.addEventListener('resize', () => this.on_window_resize());
 
@@ -285,6 +287,7 @@ function startGame(maze_game) {
 
 
 	function loop() {
+		this.touch_moved_handled = 0;
 		requestAnimationFrame(loop);
 
 		if (maze_game.debug_mode) {
