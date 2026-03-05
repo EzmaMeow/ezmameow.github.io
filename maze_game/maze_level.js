@@ -84,7 +84,7 @@ export class Maze_Level extends Level {
     //a static class for hold disposable types of reusable nature
     static loader = new TextureLoader();
     static default_source_image = "assets/maze.png";
-    static #FLAGS = {FLOOR: 1 << 0, CEIL: 1 << 1, RAMP: 1 << 2, VARIATION: 1 << 3, MESH: 1 << 4, BLOCK: 1 << 5, BOUNDS: 1 << 6 };
+    static #FLAGS = { FLOOR: 1 << 0, CEIL: 1 << 1, RAMP: 1 << 2, VARIATION: 1 << 3, MESH: 1 << 4, BLOCK: 1 << 5, BOUNDS: 1 << 6 };
     static get FLAGS() { return this.#FLAGS };
     static #DIRECTIONS = { NORTH: 0, EAST: 1, SOUTH: 2, WEST: 3 };
     static get DIRECTIONS() { return this.#DIRECTIONS };
@@ -176,11 +176,11 @@ export class Maze_Level extends Level {
             cell_type |= Maze_Level.FLAGS.MESH
             //as long as block returns, this will work, else  this will also need to check if less than 255
         }
-        else{
+        else {
             //NOTE: ramp may have floor and ceil.this may be desired to fake dead end ramps
             cell_type |= Maze_Level.FLAGS.RAMP
         }
-        if (type > 0){
+        if (type > 0) {
             //if not 0, then the direction(north) or variation is diffrent from default
             cell_type |= Maze_Level.FLAGS.VARIATION
         }
@@ -400,20 +400,61 @@ export class Maze_Level extends Level {
     get_cell_size() { return this.#cell_size; }
     //if levels need to be dynamicly added or removed, then this need to be called to clean up certain loose objects
 
-    //todo: handle this better
+    //todo: handle this better. NOTE: awaiting any of the load_resources will break them TODO: maybe not use async functions or test it again when handle correctly
     async load_resources() {
 
         const self = this;
-        await this.resources.load_resource('assets/texture.png', 'texture', Resource_Manager.KEYS.TYPES.TEXTURE, (texture) => {
+        this.resources.load_resource('assets/texture.png', 'texture', Resource_Manager.KEYS.TYPES.TEXTURE, (texture) => {
             self.default_wall_mat.map = texture;
             texture.wrapS = texture.wrapT = 1000;//THREE.RepeatWrapping
             //note: awaitthing this function may not happen, so the needs updates will be state inside the on_ready
             //but may need to find a place to set it once after all the loading is finished. the current approch is a bit of a mess
             //and the texture loading probably should be handled before the level loading and the texture info should be define outside
             //ideally with a text file override.
-            self.default_wall_mat.needsUpdate = true;
+            //self.default_wall_mat.needsUpdate = true;
+            //self.load_resources(id+1);
+            console.log('texture loaded');
+
         });
-        await this.resources.load_resource('assets/lightmap.png', 'lightmap', Resource_Manager.KEYS.TYPES.TEXTURE, (texture) => {
+
+        this.resources.load_resource('assets/normal.png', 'normal', Resource_Manager.KEYS.TYPES.TEXTURE, (texture) => {
+            self.default_wall_mat.normalMap = texture;
+            self.default_floor_mat.normalMap = texture;
+            self.default_ceil_mat.normalMap = texture;
+
+            //self.default_wall_mat.needsUpdate = true;
+            //self.default_floor_mat.needsUpdate = true;
+            //self.default_ceil_mat.needsUpdate = true;
+            console.log('normal loaded');
+
+        });
+
+        //spec(metal) and ao could be merge into a single texture. https://threejs.org/docs/#MeshStandardMaterial has more info about the maps
+        this.resources.load_resource('assets/specular.png', 'specular', Resource_Manager.KEYS.TYPES.TEXTURE, (texture) => {
+            self.default_wall_mat.metalnessMap = texture;
+            self.default_floor_mat.metalnessMap = texture;
+            self.default_ceil_mat.metalnessMap = texture;
+
+            //self.default_wall_mat.needsUpdate = true;
+            //self.default_floor_mat.needsUpdate = true;
+            //self.default_ceil_mat.needsUpdate = true;
+            console.log('specular loaded');
+
+        });
+
+        this.resources.load_resource('assets/ao.png', 'ao', Resource_Manager.KEYS.TYPES.TEXTURE, (texture) => {
+            self.default_wall_mat.aoMap = texture;
+            self.default_floor_mat.aoMap = texture;
+            self.default_ceil_mat.aoMap = texture;
+
+            //self.default_wall_mat.needsUpdate = true;
+            //self.default_floor_mat.needsUpdate = true;
+            //self.default_ceil_mat.needsUpdate = true;
+            console.log('ao loaded');
+
+        });
+
+        this.resources.load_resource('assets/lightmap.png', 'lightmap', Resource_Manager.KEYS.TYPES.TEXTURE, (texture) => {
             //the lightmap is a test
             self.default_wall_mat.lightmap = texture;
             self.default_floor_mat.lightmap = texture;
@@ -422,37 +463,9 @@ export class Maze_Level extends Level {
             self.default_wall_mat.needsUpdate = true;
             self.default_floor_mat.needsUpdate = true;
             self.default_ceil_mat.needsUpdate = true;
-        });
-        await this.resources.load_resource('assets/normal.png', 'normal', Resource_Manager.KEYS.TYPES.TEXTURE, (texture) => {
-            self.default_wall_mat.normalMap = texture;
-            self.default_floor_mat.normalMap = texture;
-            self.default_ceil_mat.normalMap = texture;
+            console.log('lightmap loaded');
 
-            self.default_wall_mat.needsUpdate = true;
-            self.default_floor_mat.needsUpdate = true;
-            self.default_ceil_mat.needsUpdate = true;
         });
-        //spec(metal) and ao could be merge into a single texture. https://threejs.org/docs/#MeshStandardMaterial has more info about the maps
-        await this.resources.load_resource('assets/specular.png', 'specular', Resource_Manager.KEYS.TYPES.TEXTURE, (texture) => {
-            self.default_wall_mat.metalnessMap = texture;
-            self.default_floor_mat.metalnessMap = texture;
-            self.default_ceil_mat.metalnessMap = texture;
-
-            self.default_wall_mat.needsUpdate = true;
-            self.default_floor_mat.needsUpdate = true;
-            self.default_ceil_mat.needsUpdate = true;
-        });
-        await this.resources.load_resource('assets/ao.png', 'ao', Resource_Manager.KEYS.TYPES.TEXTURE, (texture) => {
-            self.default_wall_mat.aoMap = texture;
-            self.default_floor_mat.aoMap = texture;
-            self.default_ceil_mat.aoMap = texture;
-
-            self.default_wall_mat.needsUpdate = true;
-            self.default_floor_mat.needsUpdate = true;
-            self.default_ceil_mat.needsUpdate = true;
-        });
-        
-
     }
     constructor(canvas, world, source_image = Maze_Level.default_source_image) {
         super(world);
