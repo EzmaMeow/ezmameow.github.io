@@ -7,7 +7,7 @@ import { Controller } from './controller.js';
 export class Player_Character extends Physics_Object {
     //TODO: Move all the player base logic here and maybe create a dedicated character object
     speed = 2.00;
-    camera = null;
+    camera = null;//may need a camera component that hold the camera ref. that would allow controlling the camera position and rot without modifing the camera
     movement_component; //decide if this should be protected or not.
 
     _physics_update(delta = 1.0) {
@@ -34,14 +34,20 @@ export class Player_Character extends Physics_Object {
     }
 
     constructor(options = {
-        'position': new Vector3(),
+        'position': new Vector3(0.0,0.0,0.0),
         'controller': new Controller(),
-        'Movement_Component':Movement_Component
+        'Movement_Component':Movement_Component,
+        'height':1.0,
+        'radius':0.25,
+        'mass': 60.0,
     }) {
         super();
+        const height = options['height'] ? options['height'] : 1.0;
+        const radius = options['radius'] ? options['radius'] : 0.25;
         //Note options keys that uses cap first letters ref to class ref
         const movement_component_class = options['Movement_Component'] ? options['Movement_Component'] : Movement_Component
         if (options['position']) { this.position.copy(options['position']) }
+        this.position.y += height/2.0 + radius;//adding half the height since I belive the orgin is center, this should set it to the botton center. also need to apply the radius of the lower part
         if (options['controller']) {
             //decide if a movement component class should be pass and how to handle ir
             this.movement_component = new movement_component_class(options['controller'])
@@ -49,10 +55,8 @@ export class Player_Character extends Physics_Object {
         else{
             this.movement_component = new movement_component_class();
         }
-        let height = 1.0;
-        let radius = 0.25;
         this.physics_body = new Body({
-            mass: 60.0, // kg
+            mass: options['mass'] ? options['mass'] : 60.0,
             shape: new Cylinder(radius, radius, height, 8),
         })
         //top sphere

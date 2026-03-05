@@ -113,9 +113,9 @@ export class Maze_Game extends Game {
 		camera = new PerspectiveCamera(50, canvas_body.clientWidth / canvas_body.clientHeight, 0.001, 32)
 	) {
 		super(renderer, camera);
-		const level = new Maze_Level(canvas, this.world, "assets/maze.png");
-		this.level = level;
-		this.scene.add(level);
+		this.level = new Maze_Level(canvas, this.world, "assets/maze.png");
+		const level = this.level;
+		this.scene.add(this.level);
 		this.scene.background = new Color(0x444444);
 		Maze_Game.scene = this.scene; //TODO: add cleanup for static scene and world incase abuses
 		Maze_Game.world = this.world;
@@ -124,30 +124,29 @@ export class Maze_Game extends Game {
 		//todo: remove all this.level and maze_game.level for Maze_Game.scene
 		this.renderer.setSize(canvas_body.clientWidth, canvas_body.clientHeight);
 		this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2.0));
-		const level_image = level.level_image;
+		const level_image = this.level.level_image;
 		this.player_controller = new Controller(); //NOTE: setting it to the maze game and have a const may be overkill, but it is here for now untill i decide on which approch is better
-		const player = new Player_Character({'controller':this.player_controller});
-		this.player = player;
+		this.player = new Player_Character({'controller':this.player_controller});
+		const player = this.player;
 		//const camera = camera //new THREE.PerspectiveCamera(50, canvas_body.clientWidth / canvas_body.clientHeight, 0.001, 32);
 		//this.camera = camera;
 		camera.position.y = 0.5
-		player.add(camera);
+		this.player.add(camera);
 		this.settings = new State();
 		//may want to rename it to config or something since input manager handling the bulk of input. this will just handle settings
-		const input_state = {
+		this.input_state = {
 			mouseSensitivity: 0.01,
 			touchSensitivity: 0.01,
 			enable_mouse: false,
 			touch_start_x: 0.0,
 			touch_start_y: 0.0
 		};
-		this.input_state = input_state;
-		level_image.on_ready = () => {
-			level.build()
+		this.level.level_image.on_ready = () => {
+			this.level.build()
 			startGame(this);
-			console.log('mewmew');
+			console.log('mew game loaded', this.player.position, this.player.physics_body.position);
 		};
-		level.add(player);
+		this.level.add(player);
 		console.log('meow adding events')
 		document.addEventListener("keydown", event => this.on_key_down(event));
 		document.addEventListener("keyup", event => this.on_key_up(event));
@@ -186,7 +185,7 @@ function startGame(maze_game) {
 		mass: 50, // kg
 		shape: new CANNON.Sphere(radius),
 	})
-	sphereBody.position.set(-10, 100, -10) // m
+	sphereBody.position.set(10, 0.0, 10) // m
 	Maze_Game.world.addBody(sphereBody)
 	const geometry = new SphereGeometry(radius)
 	const material = new MeshNormalMaterial()

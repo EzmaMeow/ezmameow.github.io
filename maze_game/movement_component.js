@@ -41,7 +41,8 @@ export class Movement_Component {
         if (old_controller){old_controller.on_action.disconnect(()=>old_controller.jump());}
     }
     get_speed() {
-        return this.#max_speed * this.controller.states.speed * this.speed_mod;
+        return this.#max_speed * this.controller.states.speed * this.speed_mod * (this.is_on_ground()? 1.0 : 0.25 );//too much speed in the air causes odd long grabbling hops. 
+        // the hops work fine for the character idea, but the distance travel may be a pain to work with. 0.25 reduction seem to make it manageable
     }
     is_ascending() {
         return (this.body.velocity.y > 0.5)
@@ -92,6 +93,9 @@ export class Movement_Component {
             return;
         };
         this.controller.direction.scale(this.acceleration, this.velocity_change)
+        //could ignore height, but since we are adding, all it would do is reduce directional speed when falling or accending too fast.
+        //ignoring height will limit y velocity change from being limited, and so the full length is being checked.  
+        //if (Math.sqrt(this.body.velocity.x * this.body.velocity.x + this.body.velocity.z * this.body.velocity.z) < this.get_speed()) {
         if (this.body.velocity.length() < this.get_speed()) {
             this.body.velocity.vadd(this.velocity_change, this.body.velocity)
         }
