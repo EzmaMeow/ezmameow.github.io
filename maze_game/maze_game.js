@@ -1,5 +1,5 @@
 
-import { Vector3, Mesh, WebGLRenderer, PerspectiveCamera, Color, Box3Helper, SphereGeometry, MeshNormalMaterial } from 'three';
+import { Vector3, Mesh, WebGLRenderer, PerspectiveCamera, Color, Box3Helper, SphereGeometry, MeshNormalMaterial, PlaneGeometry } from 'three';
 import * as Game_Utils from './game_utility.js'
 import * as CANNON from "https://esm.sh/cannon-es";
 import { Signal, State, Reactive_Object } from './game_core.js'
@@ -126,7 +126,7 @@ export class Maze_Game extends Game {
 		this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2.0));
 		const level_image = this.level.level_image;
 		this.player_controller = new Controller(); //NOTE: setting it to the maze game and have a const may be overkill, but it is here for now untill i decide on which approch is better
-		this.player = new Player_Character({'controller':this.player_controller});
+		this.player = new Player_Character({ 'controller': this.player_controller });
 		const player = this.player;
 		//const camera = camera //new THREE.PerspectiveCamera(50, canvas_body.clientWidth / canvas_body.clientHeight, 0.001, 32);
 		//this.camera = camera;
@@ -192,7 +192,6 @@ function startGame(maze_game) {
 	const sphereMesh = new Mesh(geometry, material)
 	level.add(sphereMesh)
 
-
 	function loop() {
 		requestAnimationFrame(loop);
 
@@ -213,12 +212,12 @@ function startGame(maze_game) {
 		if (maze_game.debug_mode) { speed_mod *= 2.0 }
 		if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.FORWARD)) {
 
-			Game_Utils.get_forward_direction(player.physics_body,player_controller.direction);
+			Game_Utils.get_forward_direction(player.physics_body, player_controller.direction);
 			player_controller.states.speed = speed_mod;
 		}//need to redesign it. else if because it acts really odd when both are if. probably because of how direction is handled
 		else if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.BACK)) {
-			Game_Utils.get_forward_direction(player.physics_body,player_controller.direction);
-			player_controller.direction.scale(-1,player_controller.direction);
+			Game_Utils.get_forward_direction(player.physics_body, player_controller.direction);
+			player_controller.direction.scale(-1, player_controller.direction);
 			player_controller.states.speed = speed_mod;
 		}
 

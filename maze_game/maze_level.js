@@ -92,7 +92,7 @@ export class Maze_Level extends Level {
     //TODO: allow this to be set, but would need to:
     //update all cache object base off of it 
     //rebuild the world and adjust all object to the new positions
-    #cell_size = new Vector3(2.0, 2.0, 2.0);
+    #cell_size = new Vector3(3.0, 3.0, 3.0); get cell_size() { return this.#cell_size; }
 
     static_objects = {};
 
@@ -100,10 +100,10 @@ export class Maze_Level extends Level {
         return this.resources.get_geometry('wall', new MeshStandardMaterial({ color: 0x6a7a8c, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 10 }));
     }
     get default_floor_mat() {
-        return this.resources.get_geometry('floor', new MeshStandardMaterial({ color: 0x6f7d6f, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 10 }));
+        return this.resources.get_geometry('floor', new MeshStandardMaterial({ color: 0x7f7f7f, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 10 }));
     }
     get default_ceil_mat() {
-        return this.resources.get_geometry('ceil', new MeshStandardMaterial({ color: 0x7f7f7f, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 10 }));
+        return this.resources.get_geometry('ceil', new MeshStandardMaterial({ color: 0x6f7d6f, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 10 }));
     }
 
     //Note: the one that create this should check if on exists incase it get called twice
@@ -142,49 +142,56 @@ export class Maze_Level extends Level {
 
     }
     get_cell_type(pixel_info, height = 0) {
-        let cell_type = 0;
         //blocks do not care about floors or ceils or mesh since it takes up the full space
         //also, for now, out of bounds (aka null) is consider blocking 
         const color_value = this.get_height_color(pixel_info, height);
+        const cell_type = {
+            'type': 0,
+            'index': color_value,
+            'id': 0,
+            'variation': 0,
+            'flags': 0
+        }
         if (color_value === null) {
-            cell_type |= Maze_Level.FLAGS.BOUNDS;
+            cell_type.type |= Maze_Level.FLAGS.BOUNDS;
             return cell_type
         }
         if (color_value >= 240) {
             if (color_value !== 255) {
-                cell_type |= Maze_Level.FLAGS.VARIATION
+                cell_type.type |= Maze_Level.FLAGS.VARIATION
             }
-            cell_type |= Maze_Level.FLAGS.BLOCK;
+            cell_type.type |= Maze_Level.FLAGS.BLOCK;
             return cell_type
         }
-        const flags = color_value % 4;
-        const id = Math.floor(color_value / (4 * 4));
-        const type = Math.floor(color_value / 4) % 4;
+        cell_type.flags = color_value % 4;
+        cell_type.id = Math.floor(color_value / (4 * 4));
+        cell_type.variation = Math.floor(color_value / 4) % 4;
         //todo: (okay will use flags for floor and ceil)(this means 14 types plus 15 for block variation(material) or other data. 
         //the types can also have 4 variations. normally this is directional but could be materials or subtype if it dose not have direction)
         //0:north,1:east,2:south,3:west or the varition if a volumes (like safe, unsafe or something)
         //note: this will be ran each color check. so this represents to cell in focus.
-        if (flags & Maze_Level.FLAGS.FLOOR) {
-            cell_type |= Maze_Level.FLAGS.FLOOR
+        if (cell_type.flags & Maze_Level.FLAGS.FLOOR) {
+            cell_type.type |= Maze_Level.FLAGS.FLOOR
         }
-        if (flags & Maze_Level.FLAGS.CEIL) {
-            cell_type |= Maze_Level.FLAGS.CEIL
+        if (cell_type.flags & Maze_Level.FLAGS.CEIL) {
+            cell_type.type |= Maze_Level.FLAGS.CEIL
         }
         //todo also check if greater than the reseved flags abount (floor and ceil. probably aroung 4)
         //note: the id will be offset when either flag is set. so the id will depends on the flag set (also ignoring 255)
-        if (id > 0) {
-            cell_type |= Maze_Level.FLAGS.MESH
+        if (cell_type.id > 1) {
+            cell_type.type |= Maze_Level.FLAGS.MESH
             //as long as block returns, this will work, else  this will also need to check if less than 255
         }
-        else {
+        else if (cell_type.id === 1) {
             //NOTE: ramp may have floor and ceil.this may be desired to fake dead end ramps
-            cell_type |= Maze_Level.FLAGS.RAMP
+            //using id 1 since id 0 do not have enough to represent empty space and directional
+            cell_type.type |= Maze_Level.FLAGS.RAMP
         }
-        if (type > 0) {
+        if (cell_type.variation > 0) {
             //if not 0, then the direction(north) or variation is diffrent from default
-            cell_type |= Maze_Level.FLAGS.VARIATION
+            cell_type.type |= Maze_Level.FLAGS.VARIATION
         }
-        return cell_type
+        return cell_type;
         //TODO: Mesh flag is onlt set if the value is not the flags values and not 255
 
 
@@ -224,7 +231,9 @@ export class Maze_Level extends Level {
         //TODO: scale or make wall planes to adjust their sizes base on of there a block above or below them 
         //also could give ceil/floor a thickness. this would need the walls height to be increase if opened
         //look like the faces are cloned and translated, so size may be modified as needed
-        const geometries = [];
+        const wall_geometries = [];
+        const floor_geometries = [];
+        const ceil_geometries = [];
         //note: geos should be group base on their needed materials
         //such as wall, floor, and ceil plus overrides
 
@@ -247,7 +256,7 @@ export class Maze_Level extends Level {
             for (let i = 0; i < 3; i++) {
                 //if ((Maze_Level.FLAGS.BLOCK & this.get_cell_type(pixel_info, i)) ){
                 let cell_type = this.get_cell_type(pixel_info, i);
-                if (this.is_wall(cell_type) || this.is_bounds(cell_type)) {
+                if (this.is_wall(cell_type.type) || this.is_bounds(cell_type.type)) {
                     this.maze_body.addShape(
                         new CANNON.Box(this.get_cell_size().clone().divideScalar(2.0)),
                         new CANNON.Vec3(pixel_info.x * this.#cell_size.x, this.#cell_size.y * i + this.#cell_size.y / 2.0, pixel_info.y * this.#cell_size.z)
@@ -255,79 +264,128 @@ export class Maze_Level extends Level {
                 }
                 else {
                     const west_cell_type = this.get_cell_type(pixels_data.west, i);
-                    if (this.is_wall(west_cell_type) || this.is_bounds(west_cell_type)) {
+                    if (this.is_wall(west_cell_type.type) || this.is_bounds(west_cell_type.type)) {
                         const face = this.resources.get_resource('east_face', Resource_Manager.KEYS.TYPES.GEOMETRY).clone();
                         face.translate(pixel_info.x * this.#cell_size.x - this.#cell_size.z / 2.0, this.#cell_size.y * i, pixel_info.y * this.#cell_size.z);
-                        geometries.push(face);
+                        wall_geometries.push(face);
                     }
                     const east_cell_type = this.get_cell_type(pixels_data.east, i);
-                    if (this.is_wall(east_cell_type) || this.is_bounds(east_cell_type)) {
+                    if (this.is_wall(east_cell_type.type) || this.is_bounds(east_cell_type.type)) {
                         const face = this.resources.get_resource('west_face', Resource_Manager.KEYS.TYPES.GEOMETRY).clone();
                         face.translate(pixel_info.x * this.#cell_size.x + this.#cell_size.z / 2.0, this.#cell_size.y * i, pixel_info.y * this.#cell_size.z);
-                        geometries.push(face);
+                        wall_geometries.push(face);
                     }
                     const south_cell_type = this.get_cell_type(pixels_data.south, i);
-                    if (this.is_wall(south_cell_type) || this.is_bounds(south_cell_type)) {
+                    if (this.is_wall(south_cell_type.type) || this.is_bounds(south_cell_type.type)) {
                         const face = this.resources.get_resource('north_face', Resource_Manager.KEYS.TYPES.GEOMETRY).clone();
                         face.translate(pixel_info.x * this.#cell_size.x, this.#cell_size.y * i, pixel_info.y * this.#cell_size.z + this.#cell_size.x / 2.0);
-                        geometries.push(face);
+                        wall_geometries.push(face);
                     }
                     const north_cell_type = this.get_cell_type(pixels_data.north, i);
-                    if (this.is_wall(north_cell_type) || this.is_bounds(north_cell_type)) {
+                    if (this.is_wall(north_cell_type.type) || this.is_bounds(north_cell_type.type)) {
                         const face = this.resources.get_resource('south_face', Resource_Manager.KEYS.TYPES.GEOMETRY).clone();
                         face.translate(pixel_info.x * this.#cell_size.x, this.#cell_size.y * i, pixel_info.y * this.#cell_size.z - this.#cell_size.x / 2.0);
-                        geometries.push(face);
+                        wall_geometries.push(face);
                     }
 
                     //building ceil and floor of an empty cell
                     //if (this.is_wall(pixel_info, i - 1)) {
                     const up_cell_type = this.get_cell_type(pixel_info, i + 1);
                     const down_cell_type = this.get_cell_type(pixel_info, i - 1);
-                    if (this.has_floor(cell_type) || this.is_wall(down_cell_type) || this.is_bounds(down_cell_type) || this.has_ceil(down_cell_type)) {
+                    if (this.has_floor(cell_type.type) || this.is_wall(down_cell_type.type) || this.is_bounds(down_cell_type.type) || this.has_ceil(down_cell_type.type)) {
                         const face = this.resources.get_resource('up_face', Resource_Manager.KEYS.TYPES.GEOMETRY).clone();
                         face.translate(pixel_info.x * this.#cell_size.x, this.#cell_size.y * i - this.#cell_size.y / 2.0, pixel_info.y * this.#cell_size.z);
-                        geometries.push(face);
+                        floor_geometries.push(face);
                     }
                     //if (this.is_wall(pixel_info, i + 1)) {
-                    if (this.has_ceil(cell_type) || this.is_wall(up_cell_type) || this.is_bounds(up_cell_type) || this.has_floor(up_cell_type)) {
+                    if (this.has_ceil(cell_type.type) || this.is_wall(up_cell_type.type) || this.is_bounds(up_cell_type.type) || this.has_floor(up_cell_type.type)) {
                         const face = this.resources.get_resource('down_face', Resource_Manager.KEYS.TYPES.GEOMETRY).clone();
                         face.translate(pixel_info.x * this.#cell_size.x, this.#cell_size.y * i + this.#cell_size.y / 2.0, pixel_info.y * this.#cell_size.z);
-                        geometries.push(face);
+                        ceil_geometries.push(face);
                         //NOTE also checking if floor above
-                        if (!this.is_wall(up_cell_type) || this.is_bounds(up_cell_type)) {
+                        if (!this.is_wall(up_cell_type.type) || this.is_bounds(up_cell_type.type)) {
                             this.maze_body.addShape(
                                 new CANNON.Box(new CANNON.Vec3(this.#cell_size.x / 2.0, 0.01, this.#cell_size.z / 2.0)),
                                 new CANNON.Vec3(pixel_info.x * this.#cell_size.x, this.#cell_size.y * i + this.#cell_size.y, pixel_info.y * this.#cell_size.z)
                             );
                         }
                     }
+
+                    //slopes. will treat them as floor(up) or ceil(down) for geo
+                    if ((Maze_Level.FLAGS.RAMP & cell_type.type)) {
+                        //NOTE: may create a wedge instead in the future. this approch currently is easier to make sure it works
+                        const face_up = this.resources.get_resource('slope_up_face', Resource_Manager.KEYS.TYPES.GEOMETRY).clone().rotateY(-cell_type.variation * (Math.PI / 2));
+                        const face_down = this.resources.get_resource('slope_down_face', Resource_Manager.KEYS.TYPES.GEOMETRY).clone().rotateY(-cell_type.variation * (Math.PI / 2));
+                        face_up.translate(pixel_info.x * this.#cell_size.x, this.#cell_size.y * i, pixel_info.y * this.#cell_size.z);
+                        face_down.translate(pixel_info.x * this.#cell_size.x, this.#cell_size.y * i, pixel_info.y * this.#cell_size.z);
+                        floor_geometries.push(face_up);
+                        ceil_geometries.push(face_down);
+                        const ramp_shape = new CANNON.Box(new CANNON.Vec3(this.#cell_size.x / 2.0, 0.01, Math.sqrt(this.#cell_size.z * this.#cell_size.z + this.#cell_size.y * this.#cell_size.y) / 2.0))
+                        this.maze_body.addShape(
+                            ramp_shape,
+                            new CANNON.Vec3(pixel_info.x * this.#cell_size.x, this.#cell_size.y * i + this.#cell_size.y/2.0, pixel_info.y * this.#cell_size.z),
+                            new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -cell_type.variation * Math.PI / 2).mult(new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(1, 0, 0), Math.PI / 4))
+                        );
+                    }
+
                 }
             }
         });
-
-        const maze_geo = BufferGeometryUtils.mergeGeometries(geometries, true);
-        this.resources.set_geometry('maze', maze_geo);
-        for (const geometry of geometries) {
+        const maze_wall_geo = BufferGeometryUtils.mergeGeometries(wall_geometries, true);
+        const maze_floor_geo = BufferGeometryUtils.mergeGeometries(floor_geometries, true);
+        const maze_ceil_geo = BufferGeometryUtils.mergeGeometries(ceil_geometries, true);
+        //note: only storing it since this will dispose existing resources. could do it manually (but there may be a benifity of having the geo being looked up publicly)
+        this.resources.set_geometry('maze_walls', maze_wall_geo);
+        this.resources.set_geometry('maze_floors', maze_floor_geo);
+        this.resources.set_geometry('maze_ceil', maze_ceil_geo);
+        for (const geometry of wall_geometries) {
+            geometry.dispose();
+        }
+        for (const geometry of floor_geometries) {
+            geometry.dispose();
+        }
+        for (const geometry of ceil_geometries) {
             geometry.dispose();
         }
 
         if (this.maze_mesh) {
-            this.maze_mesh.geometry = maze_geo;
-            this.maze_mesh.material = this.default_wall_mat;
-            //offset the position incase y changed
-            this.maze_mesh.position.y = this.#cell_size.y / 2.0;
+            this.maze_mesh.wall.geometry = maze_wall_geo;
+            this.maze_mesh.wall.material = this.default_wall_mat;
+            this.maze_mesh.wall.position.y = this.#cell_size.y / 2.0;
+
+            this.maze_mesh.floor.geometry = maze_floor_geo;
+            this.maze_mesh.floor.material = this.default_floor_mat;
+            this.maze_mesh.floor.position.y = this.#cell_size.y / 2.0;
+
+            this.maze_mesh.ceil.geometry = maze_ceil_geo;
+            this.maze_mesh.ceil.material = this.default_ceil_mat;
+            this.maze_mesh.ceil.position.y = this.#cell_size.y / 2.0;
         }
         else {
-            this.maze_mesh = new Mesh(maze_geo, this.default_wall_mat);
-            this.maze_mesh.name = 'maze';
-            this.maze_mesh.position.y = this.#cell_size.y / 2.0;
-            this.add(this.maze_mesh);
+            this.maze_mesh = {};
+            this.maze_mesh.wall = new Mesh(maze_wall_geo, this.default_wall_mat);
+            this.maze_mesh.wall.name = 'maze_wall';
+            this.maze_mesh.wall.position.y = this.#cell_size.y / 2.0;
+            this.add(this.maze_mesh.wall);
+
+            this.maze_mesh.floor = new Mesh(maze_floor_geo, this.default_floor_mat);
+            this.maze_mesh.floor.name = 'maze_floor';
+            this.maze_mesh.floor.position.y = this.#cell_size.y / 2.0;
+            this.add(this.maze_mesh.floor);
+
+            this.maze_mesh.ceil = new Mesh(maze_ceil_geo, this.default_ceil_mat);
+            this.maze_mesh.ceil.name = 'maze_ceil';
+            this.maze_mesh.ceil.position.y = this.#cell_size.y / 2.0;
+            this.add(this.maze_mesh.ceil);
         }
 
     }
 
     update_geometries() {
         //could check and update, but bruteforcing it at the moment
+        //also most of these are clone, so could compress it to wall(north, east), ceil, floor, and slope and rotate them in the desired direction
+        //it depends on how the uses x,y,z. floor and ceil could be one as well just need to rotate it 180, use double face, or use a floor cube(though would need to modify material for that)
+        //but if storing them cost barly any memory, them may as well store them to reduce math per part
         this.resources.set_resource('east_face', new PlaneGeometry(this.#cell_size.x, this.#cell_size.y).rotateY(Math.PI / 2), Resource_Manager.KEYS.TYPES.GEOMETRY); // +X //left to right of int spawn facing (|->)
         this.resources.set_resource('west_face', new PlaneGeometry(this.#cell_size.x, this.#cell_size.y).rotateY(-Math.PI / 2), Resource_Manager.KEYS.TYPES.GEOMETRY); // -X (<-|)
         this.resources.set_resource('south_face', new PlaneGeometry(this.#cell_size.z, this.#cell_size.y), Resource_Manager.KEYS.TYPES.GEOMETRY); // +Z //(v) (south)
@@ -336,6 +394,8 @@ export class Maze_Level extends Level {
         this.resources.set_resource('down_face', new PlaneGeometry(this.#cell_size.x, this.#cell_size.z).rotateX(Math.PI / 2), Resource_Manager.KEYS.TYPES.GEOMETRY); //ceil
         this.resources.set_resource('up_face', new PlaneGeometry(this.#cell_size.x, this.#cell_size.z).rotateX(-Math.PI / 2), Resource_Manager.KEYS.TYPES.GEOMETRY); //floor
 
+        this.resources.set_resource('slope_up_face', new PlaneGeometry(this.#cell_size.x, Math.sqrt(this.#cell_size.z * this.#cell_size.z + this.#cell_size.y * this.#cell_size.y)).rotateX(-Math.PI / 4), Resource_Manager.KEYS.TYPES.GEOMETRY);
+        this.resources.set_resource('slope_down_face', new PlaneGeometry(this.#cell_size.x, Math.sqrt(this.#cell_size.z * this.#cell_size.z + this.#cell_size.y * this.#cell_size.y)).rotateX(Math.PI / 4).rotateY(Math.PI), Resource_Manager.KEYS.TYPES.GEOMETRY);
     }
     //this is the new bounds system. this should be called once or redesign to only create missing bound.
     //or used to replace borders and floor (ceil provably not needed, but may be if no ceil collison is generated at top level)
@@ -367,7 +427,7 @@ export class Maze_Level extends Level {
             this.world.addBody(this.south_bounds)
         }
         this.south_bounds.quaternion.setFromEuler(Math.PI, 0, 0)
-        this.south_bounds.position.z = this.level_image.image.width * 2 - this.#cell_size.z / 2.0
+        this.south_bounds.position.z = this.level_image.image.width * this.#cell_size.z - this.#cell_size.z / 2.0
 
         if (!this.west_bounds) {
             this.west_bounds = new CANNON.Body({
@@ -387,7 +447,7 @@ export class Maze_Level extends Level {
             this.world.addBody(this.east_bounds)
         }
         this.east_bounds.quaternion.setFromEuler(0, -Math.PI / 2, 0)
-        this.east_bounds.position.x = this.level_image.image.height * 2 - this.#cell_size.x / 2.0
+        this.east_bounds.position.x = this.level_image.image.height * this.#cell_size.x - this.#cell_size.x / 2.0
 
     }
     async build() {
@@ -404,6 +464,7 @@ export class Maze_Level extends Level {
     async load_resources() {
 
         const self = this;
+        //texture is for more detail, but normal map adds the texture from light depth
         this.resources.load_resource('assets/texture.png', 'texture', Resource_Manager.KEYS.TYPES.TEXTURE, (texture) => {
             self.default_wall_mat.map = texture;
             texture.wrapS = texture.wrapT = 1000;//THREE.RepeatWrapping
@@ -416,7 +477,7 @@ export class Maze_Level extends Level {
             console.log('texture loaded');
 
         });
-
+        //normal may or may not be correct. need to check the light order. also could see how bumbmap works if the lighting is simple
         this.resources.load_resource('assets/normal.png', 'normal', Resource_Manager.KEYS.TYPES.TEXTURE, (texture) => {
             self.default_wall_mat.normalMap = texture;
             self.default_floor_mat.normalMap = texture;
@@ -460,6 +521,7 @@ export class Maze_Level extends Level {
             self.default_floor_mat.lightmap = texture;
             self.default_ceil_mat.lightmap = texture;
 
+            //currently these are ran in order, but should mantain a state of total resources to load and run this at the end incase the order becomes unreliable
             self.default_wall_mat.needsUpdate = true;
             self.default_floor_mat.needsUpdate = true;
             self.default_ceil_mat.needsUpdate = true;
