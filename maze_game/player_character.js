@@ -4,6 +4,9 @@ import { Physics_Object } from './game_objects.js'
 import { Movement_Component } from './movement_component.js'
 import { Controller } from './controller.js';
 
+import { Audio_Manager } from './audio_manager.js'
+import { Footsteps } from './sound_scripts/footsteps.js'
+
 export class Player_Character extends Physics_Object {
     //TODO: Move all the player base logic here and maybe create a dedicated character object
     speed = 2.00;
@@ -24,13 +27,15 @@ export class Player_Character extends Physics_Object {
         //we may use the object rotations and such since it is easier to modify
         //but may need to be converted back and done the harder way if we want forces to influances(this project dose not expect that)
         this.physics_body.quaternion.copy(this.quaternion)
+
     }
     _add_physics(world) {
         super._add_physics(world);
         this.movement_component.world = world;
     }
     jump() {
-        this.movement_component.jump();
+        console.log(Audio_Manager.get_sound('player_footsteps'));
+        Audio_Manager.get_sound('player_footsteps').play();
     }
 
     constructor(options = {
@@ -71,5 +76,7 @@ export class Player_Character extends Physics_Object {
         this.light.position.y = height / 2.0;
         this.add(this.light);
 
+        Audio_Manager.add_sound('player_footsteps',Footsteps);
+        this.movement_component.on_jump.connect(()=>this.jump());
     }
 }

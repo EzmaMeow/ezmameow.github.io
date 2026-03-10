@@ -1,8 +1,11 @@
 import { Vec3, Ray } from "https://esm.sh/cannon-es";
 import { Controller } from './controller.js'
 import { VEC3, get_forward_direction } from './game_utility.js'
+import { Signal } from './game_core.js'
 
 export class Movement_Component {
+    #on_jump = new Signal(); get on_jump(){return this.#on_jump}
+
     world = null; //This will interface with the world
     #body = null; get body() { return this.#body } //this should have at least a single body to focus on.
     set body(value) {
@@ -86,6 +89,7 @@ export class Movement_Component {
         if (this.is_on_ground()) {
             this.body.velocity.y = this.body.velocity.y + 6.0;
             this.on_ground = false;
+            this.on_jump.emit()
         }
     }
     physics_update(delta = 1.0) {

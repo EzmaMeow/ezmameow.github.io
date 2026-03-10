@@ -177,21 +177,6 @@ function startGame(maze_game) {
 	//reuable ref base object
 	const collsion_data = new Collsion_Data();
 
-	let moving = false;
-
-	//tests
-	const radius = 0.5 // m
-	const sphereBody = new CANNON.Body({
-		mass: 50, // kg
-		shape: new CANNON.Sphere(radius),
-	})
-	sphereBody.position.set(10, 0.0, 10) // m
-	Maze_Game.world.addBody(sphereBody)
-	const geometry = new SphereGeometry(radius)
-	const material = new MeshNormalMaterial()
-	const sphereMesh = new Mesh(geometry, material)
-	level.add(sphereMesh)
-
 	function loop() {
 		requestAnimationFrame(loop);
 
@@ -205,7 +190,7 @@ function startGame(maze_game) {
 		collsion_data.from.copy(player.position)
 		collsion_data.to.copy(player.position)
 		collsion_data.velocity.set(0, 0, 0);
-		moving = false;
+
 		player_controller.states.speed = 0;
 		//NOTE: the speed mod is really the controller.states.speed if moving.
 		let speed_mod = Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.SHIFT) ? 2 : 1
@@ -238,12 +223,6 @@ function startGame(maze_game) {
 		}
 
 		maze_game.update(performance.now());
-		//Maze_Game.world.fixedStep();
-		//test (note: physics then rendering. test is syncing the positions)
-		sphereMesh.position.copy(sphereBody.position)
-		sphereMesh.quaternion.copy(sphereBody.quaternion)
-		//player.physics_update()
-		//test end
 
 		if (maze_game.resize) {
 			const width = canvas_body.clientWidth;
