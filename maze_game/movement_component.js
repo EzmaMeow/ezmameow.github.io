@@ -1,110 +1,115 @@
-import { Vec3, Ray } from "https://esm.sh/cannon-es";
+import { Vec3, Ray, Quaternion, AABB } from "https://esm.sh/cannon-es";
 import { Controller } from './controller.js'
 import { VEC3, get_forward_direction } from './game_utility.js'
 import { Signal } from './game_core.js'
 
 export class Movement_Component {
-    #on_jump = new Signal(); get on_jump(){return this.#on_jump}
+    //movement state is for additional state that can not be infered by velocity
+    static #MOVEMENT_STATE = {
+        IDLE: 0, //no state applies 
+        MOVING: 1 << 0, //the component is applying or maintaing velocity
+        FORCED: 1 << 1, //Something else is applying force
+        GROUNDED: 1 << 2, //states that it is on ground (gravity blocking surface) 
+    }
+    static get MOVEMENT_STATE() { return this.#MOVEMENT_STATE; }
+    movement_state = Movement_Component.MOVEMENT_STATE.IDLE;
+    #on_jump = new Signal(); get on_jump() { return this.#on_jump }
 
-    world = null; //This will interface with the world
+    #world = null; get world() { return this.#world; }//This will interface with the world
+    set world(value) {
+        const old_world = this.#world
+        this.#world = value;
+        if (this.#world) {
+            value.addEventListener('postStep', () => this.post_step());
+        }
+        if (old_world) {
+            value.removeEventListener('postStep', () => this.post_step());
+        }
+    }
     #body = null; get body() { return this.#body } //this should have at least a single body to focus on.
     set body(value) {
-        const old_body = this.#body;
         this.#body = value;
-        if (old_body) {
-            old_body.removeEventListener("collide", (event, component = this) => this.on_collide(event, component))
-        }
-        if (this.#body) {
-            this.#body.addEventListener("collide", (event, component = this) => this.on_collide(event, component))
-        }
     }
 
     #max_speed = 5.0; //speed will be move here instead of player since it regulates the moving the body
-    speed_mod = 1.0; 
+    speed_mod = 1.0;
+    jump_strength = 3.0;
     acceleration = 5.0;
-    on_ground = false;
-    last_collide = {
-        normal: new Vec3(),
-        body: null,
-    }
-    velocity_change = new Vec3();
+    contacts = new Set();
+    #contact_normal = new Vec3();
+    #velocity_change = new Vec3();
     //NOTE: controller will have signals such as action(jump) that need to be manage. some actions the player or other systems will manage
-    #controller; 
+    #controller;
     get controller() {
         if (!this.#controller) {
             this.#controller = new Controller();
-            this.controller.on_action.connect(()=>this.jump());
+            this.controller.on_action.connect(() => this.jump());
         }
         return this.#controller
     }
     set controller(new_controller) {
         const old_controller = this.#controller;
         this.#controller = new_controller;
-        if (this.#controller){this.#controller.on_action.connect(()=>this.jump());}
-        if (old_controller){old_controller.on_action.disconnect(()=>old_controller.jump());}
+        if (this.#controller) { this.#controller.on_action.connect(() => this.jump()); }
+        if (old_controller) { old_controller.on_action.disconnect(() => old_controller.jump()); }
     }
     get_speed() {
-        return this.#max_speed * this.controller.states.speed * this.speed_mod * (this.is_on_ground()? 1.0 : 0.25 );//too much speed in the air causes odd long grabbling hops. 
+        return this.#max_speed * this.controller.states.speed * this.speed_mod * (this.is_on_ground() ? 1.0 : 0.25);//too much speed in the air causes odd long grabbling hops. 
         // the hops work fine for the character idea, but the distance travel may be a pain to work with. 0.25 reduction seem to make it manageable
-    }
-    is_ascending() {
-        return (this.body.velocity.y > 0.5)
-    }
-    is_descending() {
-        return (this.body.velocity.y < -0.5)
     }
     is_on_ground() {
         //on_ground is set when there is a ground colsion, my be better to call it jumpped. the other 
         //checks will make sure it not falling or accending
-        return this.on_ground && !this.is_ascending() && !this.is_descending();
-    }
-    ray = new Ray();
-    //not sure if this will be used. it is a bit unreliable
-    check_ground(distance = 0.1, x = this.body.aabb.lowerBound.x, z = this.body.aabb.lowerBound.z) {
-        if (this.world && this.body) {
-            this.ray.from.set(x, this.body.aabb.lowerBound.y, z);
-            this.ray.to.set(x, this.body.aabb.lowerBound.y - distance, z);
-            this.ray.intersectWorld(this.world, { collisionFilterMask: this.body.collisionFilterMask, skipBackfaces: false });
-            return this.ray.hasHit;
-        }
-        return null;
-    }
-    on_collide(event, component = this) {
-        //todo: convert these const to a last collide object to reuse vectors and ref the last collsion
-        //data. also could store extra data like last floor body and the shape normal.
-        //NOTE: this may run a few time a frame if same body but on the seam of shapes so when caching, need to
-        //decide if how to handle it. floor would be the one with the ideal normal, but the last may be the last hanlde since array may be too much to handle.
-        component.last_collide.normal.copy(event.contact.ni);
-        component.last_collide.body = event.contact.bi === component.body ? event.contact.bj : event.contact.bi;
-
-        if (event.contact.bi.id === component.body.id) {
-            component.last_collide.normal.negate();
-        }
-        if (component.last_collide.normal.dot(VEC3.DOWN) > 0.5) {
-            component.on_ground = true;
-        }
-
+        return this.movement_state & Movement_Component.MOVEMENT_STATE.GROUNDED;
     }
     jump() {
         if (this.is_on_ground()) {
-            this.body.velocity.y = this.body.velocity.y + 6.0;
-            this.on_ground = false;
+            this.body.velocity.y = this.jump_strength; //setting it is risky, but works for now. adding causes it to stack up which would require more control to fix
+            this.movement_state &= ~Movement_Component.MOVEMENT_STATE.GROUNDED; //setting to not grounded to reduce chances of it being called a few times before update
+            //may be better to add a flag and add during update
             this.on_jump.emit()
         }
     }
     physics_update(delta = 1.0) {
+        this.movement_state &= ~Movement_Component.MOVEMENT_STATE.MOVING;
         if (this.controller.direction.lengthSquared() === 0 || !this.body) {
+            //TODO: should add a flag or state for moving. this would state it is not moving (by player input) while a vector zero velocity means there is no movement
             return;
         };
-        this.controller.direction.scale(this.acceleration, this.velocity_change)
+        this.controller.direction.scale(this.acceleration, this.#velocity_change)
         //could ignore height, but since we are adding, all it would do is reduce directional speed when falling or accending too fast.
         //ignoring height will limit y velocity change from being limited, and so the full length is being checked.  
         //if (Math.sqrt(this.body.velocity.x * this.body.velocity.x + this.body.velocity.z * this.body.velocity.z) < this.get_speed()) {
         if (this.body.velocity.length() < this.get_speed()) {
-            this.body.velocity.vadd(this.velocity_change, this.body.velocity)
+            //Note: the velocity length could be greater than speed for an instance, but slow down as long as something causing friction or drag
+            //meaning this may be fine, but may cause some odd stuff if the changes is too great and there no way to slow down
+            this.body.velocity.vadd(this.#velocity_change, this.body.velocity)
+        }
+        if (this.body.velocity.length() > 0.1) {
+            this.movement_state |= Movement_Component.MOVEMENT_STATE.MOVING;
         }
     }
-    constructor(controller = new Controller()){
+    post_step() {
+        //NOTE: currently the contact list is slim but more character would mean more loops
+        //so it may be better to expand on the world to loop it once and make maps for the collsiders base on their types
+        //though only if there is a lot of characters
+        this.contacts.clear();
+        this.movement_state &= ~Movement_Component.MOVEMENT_STATE.GROUNDED;
+        for (let i = 0; i < this.world.contacts.length; i++) {
+            const contact = this.world.contacts[i];
+            if (contact.bi === this.body || contact.bj === this.body) {
+                this.#contact_normal.copy(contact.ni);
+                this.contacts.add(contact)
+                if (this.#contact_normal.dot(VEC3.DOWN) > 0.5) {
+                    this.movement_state |= Movement_Component.MOVEMENT_STATE.GROUNDED;
+                    contact.is_floor = true; //tagging it as a floor collsion for future filtering
+                }
+            }
+        }
+        //note: keeping track of what is colliding and what is not may be costly so should be limited to collsion types that are importaint for functions (aka surfaces)
+        //and only for objects that need to check for it (characters)
+    }
+    constructor(controller = new Controller()) {
         this.controller = controller;
     }
 }

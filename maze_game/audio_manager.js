@@ -63,9 +63,7 @@ export class Audio_Manager {
         return this.#sounds.has(id);
     }
     static add_sound(id, sound_class, start = true) {
-        console.log('adding sound ', id)
         if (sound_class) {
-            console.log('sound class vaild ', sound_class)
             const sound = new sound_class(this.audio_context);
             if (start){
                 sound.start();
