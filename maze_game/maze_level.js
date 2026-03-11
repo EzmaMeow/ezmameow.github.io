@@ -4,6 +4,7 @@ import * as Game_Utils from './game_utility.js'
 import * as CANNON from "https://esm.sh/cannon-es";
 import { Resource_Manager } from './resource_manager.js'
 import { Level } from './game_scenes.js'
+import { Signal } from './game_core.js'
 
 //handles the image data of a level built from a image
 export class Level_Image {
@@ -88,7 +89,13 @@ export class Maze_Level extends Level {
     static get FLAGS() { return this.#FLAGS };
     static #DIRECTIONS = { NORTH: 0, EAST: 1, SOUTH: 2, WEST: 3 };
     static get DIRECTIONS() { return this.#DIRECTIONS };
-    level_image;
+
+    //called when ready to used. will be called when ever the level is rebuilt
+    #on_ready = new Signal(); get on_ready(){return this.#on_ready;}
+    //this will be called when the level is changing aka loading image/file/data. should be used to trigger loading screens and pausing/restarting gameplay
+    #on_load = new Signal(); get on_load(){return this.#on_load;} 
+
+    #level_image; get level_image(){return this.#level_image;}
     //TODO: allow this to be set, but would need to:
     //update all cache object base off of it 
     //rebuild the world and adjust all object to the new positions
@@ -226,7 +233,7 @@ export class Maze_Level extends Level {
         }
         return bounds;
     }
-    async build_maze() {
+    build_maze() {
         //NOTE: ceil and floors may have z clipping issue. this is due to block walls overlaping
         //TODO: scale or make wall planes to adjust their sizes base on of there a block above or below them 
         //also could give ceil/floor a thickness. this would need the walls height to be increase if opened
@@ -450,91 +457,83 @@ export class Maze_Level extends Level {
         this.east_bounds.position.x = this.level_image.image.height * this.#cell_size.x - this.#cell_size.x / 2.0
 
     }
-    async build() {
+    build() {
         this.update_geometries();
         this.build_maze();
         this.create_bounds();
 
+        this.on_ready.emit();
     }
     //this is here to prevent setting it
     get_cell_size() { return this.#cell_size; }
     //if levels need to be dynamicly added or removed, then this need to be called to clean up certain loose objects
 
     //todo: handle this better. NOTE: awaiting any of the load_resources will break them TODO: maybe not use async functions or test it again when handle correctly
-    async load_resources() {
-
+    load_resources() {
         const self = this;
+        this.resources.on_load_end.connect(()=>this.on_resources_loaded());
         //texture is for more detail, but normal map adds the texture from light depth
-        this.resources.load_resource('assets/texture.png', 'texture', Resource_Manager.KEYS.TYPES.TEXTURE, (texture) => {
-            self.default_wall_mat.map = texture;
-            texture.wrapS = texture.wrapT = 1000;//THREE.RepeatWrapping
-            //note: awaitthing this function may not happen, so the needs updates will be state inside the on_ready
-            //but may need to find a place to set it once after all the loading is finished. the current approch is a bit of a mess
-            //and the texture loading probably should be handled before the level loading and the texture info should be define outside
-            //ideally with a text file override.
-            //self.default_wall_mat.needsUpdate = true;
-            //self.load_resources(id+1);
-            console.log('texture loaded');
-
-        });
+        this.resources.load_resource('assets/texture.png', 'texture', Resource_Manager.KEYS.TYPES.TEXTURE);
         //normal may or may not be correct. need to check the light order. also could see how bumbmap works if the lighting is simple
-        this.resources.load_resource('assets/normal.png', 'normal', Resource_Manager.KEYS.TYPES.TEXTURE, (texture) => {
-            self.default_wall_mat.normalMap = texture;
-            self.default_floor_mat.normalMap = texture;
-            self.default_ceil_mat.normalMap = texture;
-
-            //self.default_wall_mat.needsUpdate = true;
-            //self.default_floor_mat.needsUpdate = true;
-            //self.default_ceil_mat.needsUpdate = true;
-            console.log('normal loaded');
-
-        });
+        this.resources.load_resource('assets/normal.png', 'normal', Resource_Manager.KEYS.TYPES.TEXTURE);
 
         //spec(metal) and ao could be merge into a single texture. https://threejs.org/docs/#MeshStandardMaterial has more info about the maps
-        this.resources.load_resource('assets/specular.png', 'specular', Resource_Manager.KEYS.TYPES.TEXTURE, (texture) => {
-            self.default_wall_mat.metalnessMap = texture;
-            self.default_floor_mat.metalnessMap = texture;
-            self.default_ceil_mat.metalnessMap = texture;
+        this.resources.load_resource('assets/specular.png', 'specular', Resource_Manager.KEYS.TYPES.TEXTURE);
 
-            //self.default_wall_mat.needsUpdate = true;
-            //self.default_floor_mat.needsUpdate = true;
-            //self.default_ceil_mat.needsUpdate = true;
-            console.log('specular loaded');
+        this.resources.load_resource('assets/ao.png', 'ao', Resource_Manager.KEYS.TYPES.TEXTURE);
 
-        });
+        this.resources.load_resource('assets/lightmap.png', 'lightmap', Resource_Manager.KEYS.TYPES.TEXTURE);
+    }
+    on_resources_loaded(){
+        this.resources.on_load_end.disconnect(()=>this.on_resources_loaded());
+        console.log('MEOOOW!!!!');
+        const texture = this.resources.get_texture('texture');
+        const normal = this.resources.get_texture('normal');
+        const specular = this.resources.get_texture('specular');
+        const ao = this.resources.get_texture('ao');
+        const lightmap = this.resources.get_texture('lightmap');
+        //texture.wrapS = texture.wrapT = 1000;
+        this.default_wall_mat.map = texture;
 
-        this.resources.load_resource('assets/ao.png', 'ao', Resource_Manager.KEYS.TYPES.TEXTURE, (texture) => {
-            self.default_wall_mat.aoMap = texture;
-            self.default_floor_mat.aoMap = texture;
-            self.default_ceil_mat.aoMap = texture;
+        this.default_wall_mat.normalMap = normal;
+        this.default_floor_mat.normalMap = normal;
+        this.default_ceil_mat.normalMap = normal;
 
-            //self.default_wall_mat.needsUpdate = true;
-            //self.default_floor_mat.needsUpdate = true;
-            //self.default_ceil_mat.needsUpdate = true;
-            console.log('ao loaded');
+        this.default_wall_mat.metalnessMap = specular;
+        this.default_floor_mat.metalnessMap = specular;
+        this.default_ceil_mat.metalnessMap = specular;
 
-        });
+        this.default_wall_mat.aoMap = ao;
+        this.default_floor_mat.aoMap = ao;
+        this.default_ceil_mat.aoMap = ao;
 
-        this.resources.load_resource('assets/lightmap.png', 'lightmap', Resource_Manager.KEYS.TYPES.TEXTURE, (texture) => {
-            //the lightmap is a test
-            self.default_wall_mat.lightmap = texture;
-            self.default_floor_mat.lightmap = texture;
-            self.default_ceil_mat.lightmap = texture;
+        this.default_wall_mat.lightmap = lightmap;
+        this.default_floor_mat.lightmap = lightmap;
+        this.default_ceil_mat.lightmap = lightmap;
 
-            //currently these are ran in order, but should mantain a state of total resources to load and run this at the end incase the order becomes unreliable
-            self.default_wall_mat.needsUpdate = true;
-            self.default_floor_mat.needsUpdate = true;
-            self.default_ceil_mat.needsUpdate = true;
-            console.log('lightmap loaded');
+        this.default_wall_mat.needsUpdate = true;
+        this.default_floor_mat.needsUpdate = true;
+        this.default_ceil_mat.needsUpdate = true;
 
-        });
+        this.start_level();
+        
+    }
+    start_level(){
+        console.log('starting level')
+        this.#level_image = new Level_Image(this.maze_image);
+        this.level_image.on_ready = () => {
+            this.on_load.emit();//may be better added when the image is changed, but for now it is here 
+            console.log('started building', this)
+            this.build()
+        };
+        
     }
     constructor(canvas, world, source_image = Maze_Level.default_source_image) {
         super(world);
         this.resources = Resource_Manager.default_instance; //cache the Resource_Manager so it could be overrided
         //may need to call loading before or after creating the level where it can be awaited
         this.load_resources();
-        this.level_image = new Level_Image(source_image);
+        this.maze_image = source_image;
 
         //this.renderer = this.resources.get_renderer(
         //    'main',

@@ -33,6 +33,8 @@ export class Maze_Game extends Game {
 	static scene; //main scene for rendering reasons
 	static world; //main world
 	debug_mode = false;
+	//called when there is a change that may affect a major state such as pausing, starting, loading. used for html elements to update themselves (or untill dedicated signals are added)
+	#on_state_changed = new Signal(); get on_state_changed(){return this.#on_state_changed;}
 	//NOTE: Key events are redirected to this, but some may need to be redirected to player
 	//maybe have a return so the key call chain can stop for more complex cases
 	on_key_down(event) {
@@ -124,7 +126,7 @@ export class Maze_Game extends Game {
 		//todo: remove all this.level and maze_game.level for Maze_Game.scene
 		this.renderer.setSize(canvas_body.clientWidth, canvas_body.clientHeight);
 		this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2.0));
-		const level_image = this.level.level_image;
+		//const level_image = this.level.level_image;
 		this.player_controller = new Controller(); //NOTE: setting it to the maze game and have a const may be overkill, but it is here for now untill i decide on which approch is better
 		this.player = new Player_Character({ 'controller': this.player_controller });
 		const player = this.player;
@@ -141,11 +143,18 @@ export class Maze_Game extends Game {
 			touch_start_x: 0.0,
 			touch_start_y: 0.0
 		};
-		this.level.level_image.on_ready = () => {
-			this.level.build()
-			startGame(this);
-			console.log('mew game loaded', this.player.position, this.player.physics_body.position);
-		};
+		this.level.on_ready.connect(()=>{
+			if (!this.game_started){
+				startGame(this);
+				this.game_started = true;
+				console.log('mew game loaded', this.player.position, this.player.physics_body.position);
+			}
+		})
+		//this.level.level_image.on_ready = () => {
+		//	this.level.build()
+		//	startGame(this);
+		//	console.log('mew game loaded', this.player.position, this.player.physics_body.position);
+		//};
 		this.level.add(player);
 		console.log('meow adding events')
 		document.addEventListener("keydown", event => this.on_key_down(event));
@@ -164,6 +173,7 @@ export class Maze_Game extends Game {
 
 
 function startGame(maze_game) {
+	maze_game.on_state_changed.emit();
 	//main ref
 	const level = maze_game.level;
 	const player = maze_game.player;

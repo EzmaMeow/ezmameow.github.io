@@ -113,10 +113,29 @@ body {
 }
 
 .touch_zone {
-        -webkit-user-select: none; /* Safari */
-        -moz-user-select: none;    /* Firefox */
-        -ms-user-select: none;     /* IE/Edge */
-        user-select: none;         /* Standard */
-        -webkit-touch-callout: none;
-        -webkit-user-drag: none;
-    }
+    -webkit-user-select: none;
+    /* Safari */
+    -moz-user-select: none;
+    /* Firefox */
+    -ms-user-select: none;
+    /* IE/Edge */
+    user-select: none;
+    /* Standard */
+    -webkit-touch-callout: none;
+    -webkit-user-drag: none;
+}
+#loading_overlay {
+    position: absolute;
+    text-align: center;
+    top: 10%;
+    right: 2%;
+    left: 2%;
+    bottom: 13%;
+    color: white;
+    background-color: #000000;
+    z-index: 900;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+}

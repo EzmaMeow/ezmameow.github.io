@@ -41,6 +41,7 @@
           <a>Light Distance<input type="number" id="light_distance" min="0.0" max="100" step="1.0" value="0.0"></a>
           <a>Light Decay<input type="number" id="light_decay" min="0.0" max="10" step="0.1" value="2.0"></a>
         </div>
+        <div id="loading_overlay"> LOADING </div>
       </div>
 
 
@@ -172,6 +173,17 @@
     event_router(document.getElementById('light_distance'), "change", maze_game.settings, 'light.distance');
     event_router(document.getElementById('light_decay'), "change", maze_game.settings, 'light.decay');
     //TODO CONNECT LIGHT AND UPDATE
+
+    maze_game.on_state_changed.connect(()=>{
+      //is loading is not being set yet. so it should alway be false (but this signal will be called when everything is loaded)
+      if (maze_game.is_loading){
+        document.getElementById('loading_overlay').style.display = 'block';
+      }
+      else{
+        document.getElementById('loading_overlay').style.display = 'none';
+      }
+      
+    })
 
   </script>
 </body>

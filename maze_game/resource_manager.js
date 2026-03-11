@@ -1,5 +1,6 @@
 
 import { LoadingManager, TextureLoader } from 'three';
+import { Signal } from './game_core.js'
 
 //this class stores and links resources for the game
 //as well as manage loading (and perhaps unloading) them
@@ -16,6 +17,11 @@ export class Resource_Manager {
     }); //NOTE: values can be changes, but the container type is locked
     static get KEYS() { return this.#KEYS; }
 
+    #on_load_end = new Signal(); get on_load_end(){return this.#on_load_end;}
+    #on_load_start = new Signal(); get on_load_start(){return this.#on_load_start;}
+    #on_load_progress = new Signal(); get on_load_progress(){return this.#on_load_progress;}
+    #on_load_error = new Signal(); get on_load_error(){return this.#on_load_error;}
+    #on_resource_load = new Signal(); get on_resource_load(){return this.#on_resource_load;}
     //#signals = new Map();//reserver for callbacks in responce to changes that may take time(should be an object of maps if so)
 
     #renderers = new Map(); //there may be more that one renderer, so this is here to handle them
@@ -149,40 +155,58 @@ export class Resource_Manager {
             this.dispose_renderers();
         }
     }
+    load_start(url, items_loaded, items_total) {
+        this.on_load_start.emit(url, items_loaded, items_total);
+        console.log('started loading: ', url, ' ', items_loaded, ' ', items_total)
+    }
+    load_end() {
+        this.on_load_end.emit();
+        //NOTE: this is called one all resources are loaded
+        console.log('loading is finished')
+    }
+    load_error(url) {
+        this.on_load_error.emit(url);
+        console.log('failed to load: ', url)
+    }
+    load_progress(url, items_loaded, items_total) {
+        this.on_load_progress.emit(url, items_loaded, items_total);
+        console.log('loading: ', url, ' ', items_loaded, ' ', items_total)
+    }
+    resource_loaded(id, type, result, source) {
+        this.set_resource(id, result, source);
+        this.on_resource_load.emit(id, type, result);
+    }
     //decided to try to wrap it in a promise so it could be awaited, but kept the signals so await is not nessary
-    async load_resource(file, id, type, on_ready = null, source = null, loader = null) {
+    load_resource(file, id, type, source = null, loader = null) {
         if (type == Resource_Manager.KEYS.TYPES.TEXTURE) {
             source = this.#textures;
             loader = this.texture_loader;
         }
         if (source && loader) {
-            return new Promise((resolve, reject) => {
-                loader.load(file, (result) => {
-                    this.set_resource(id, result, source);
-                    if (on_ready) {
-                        on_ready(result);
-                    }
-                    resolve = result;
-                },undefined, reject);
-            });
+            loader.load(file, (result) => this.resource_loaded(id, type, result, source));
         }
-
     }
+
+
     //This should only be called when the session ends or this needs
     //to be removed. may need to make it a function
-    destroy(event = null, self = this) {
-        self.dispose_all(true);
-        document.removeEventListener("beforeunload", self.on_destroy);
-        document.removeEventListener("unload", self.on_destroy);
-        document.removeEventListener("pagehide", self.on_destroy);
-        if (Resource_Manager.default_instance === self) {
+    destroy(event) {
+        this.dispose_all(true);
+        document.removeEventListener("beforeunload", (event) => this.destroy(event));
+        document.removeEventListener("unload", (event) => this.destroy(event));
+        document.removeEventListener("pagehide", (event) => this.destroy(event));
+        if (Resource_Manager.default_instance === this) {
             Resource_Manager.default_instance = null
         }
     }
 
     constructor() {
-        window.addEventListener("beforeunload", this.on_destroy);
-        window.addEventListener("unload", this.on_destroy);
-        window.addEventListener("pagehide", this.on_destroy);
+        window.addEventListener("beforeunload", (event) => this.destroy(event));
+        window.addEventListener("unload", (event) => this.destroy(event));
+        window.addEventListener("pagehide", (event) => this.destroy(event));
+        this.#loading_manager.onLoad = () => this.load_end();
+        this.#loading_manager.onProgress = (url, items_loaded, items_total) => this.load_progress(url, items_loaded, items_total);
+        this.#loading_manager.onStart = (url, items_loaded, items_total) => this.load_start(url, items_loaded, items_total);
+        this.#loading_manager.onError = (url) => this.load_error(url);
     }
 }
