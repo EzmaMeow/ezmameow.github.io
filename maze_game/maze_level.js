@@ -1,4 +1,4 @@
-import { TextureLoader, Vector3, MeshLambertMaterial, Box3, PlaneGeometry, Mesh, MeshStandardMaterial } from 'three';
+import { TextureLoader, Vector3, Box3, PlaneGeometry, Mesh, MeshStandardMaterial, FileLoader } from 'three';
 import * as BufferGeometryUtils from "three/addons/utils/BufferGeometryUtils.js";
 import * as Game_Utils from './game_utility.js'
 import * as CANNON from "https://esm.sh/cannon-es";
@@ -81,21 +81,20 @@ export class Level_Image {
 }
 
 export class Maze_Level extends Level {
-    //may relocate the loader. it here since level (along with maze_game) will be acess often, but I may add
-    //a static class for hold disposable types of reusable nature
-    static loader = new TextureLoader();
     static default_source_image = "assets/maze.png";
     static #FLAGS = { FLOOR: 1 << 0, CEIL: 1 << 1, RAMP: 1 << 2, VARIATION: 1 << 3, MESH: 1 << 4, BLOCK: 1 << 5, BOUNDS: 1 << 6 };
     static get FLAGS() { return this.#FLAGS };
     static #DIRECTIONS = { NORTH: 0, EAST: 1, SOUTH: 2, WEST: 3 };
     static get DIRECTIONS() { return this.#DIRECTIONS };
 
-    //called when ready to used. will be called when ever the level is rebuilt
-    #on_ready = new Signal(); get on_ready(){return this.#on_ready;}
-    //this will be called when the level is changing aka loading image/file/data. should be used to trigger loading screens and pausing/restarting gameplay
-    #on_load = new Signal(); get on_load(){return this.#on_load;} 
+    #file_loader = new FileLoader();
 
-    #level_image; get level_image(){return this.#level_image;}
+    //called when ready to used. will be called when ever the level is rebuilt
+    #on_ready = new Signal(); get on_ready() { return this.#on_ready; }
+    //this will be called when the level is changing aka loading image/file/data. should be used to trigger loading screens and pausing/restarting gameplay
+    #on_load = new Signal(); get on_load() { return this.#on_load; }
+
+    #level_image; get level_image() { return this.#level_image; }
     //TODO: allow this to be set, but would need to:
     //update all cache object base off of it 
     //rebuild the world and adjust all object to the new positions
@@ -103,14 +102,18 @@ export class Maze_Level extends Level {
 
     static_objects = {};
 
+    //NOTE: json file will be used for setting up reosources
+    //it will state things to preload (textures)
+    //but also may state id(of textures) used for materials as well as other properties (color)
+
     get default_wall_mat() {
-        return this.resources.get_geometry('wall', new MeshStandardMaterial({ color: 0x6a7a8c, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 10 }));
+        return this.resources.get_material('default_wall', new MeshStandardMaterial({ color: 0x6a7a8c, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 10 }));
     }
     get default_floor_mat() {
-        return this.resources.get_geometry('floor', new MeshStandardMaterial({ color: 0x7f7f7f, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 10 }));
+        return this.resources.get_material('default_floor', new MeshStandardMaterial({ color: 0x7f7f7f, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 10 }));
     }
     get default_ceil_mat() {
-        return this.resources.get_geometry('ceil', new MeshStandardMaterial({ color: 0x6f7d6f, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 10 }));
+        return this.resources.get_material('default_ceil', new MeshStandardMaterial({ color: 0x6f7d6f, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 10 }));
     }
 
     //Note: the one that create this should check if on exists incase it get called twice
@@ -330,7 +333,7 @@ export class Maze_Level extends Level {
                         const ramp_shape = new CANNON.Box(new CANNON.Vec3(this.#cell_size.x / 2.0, 0.01, Math.sqrt(this.#cell_size.z * this.#cell_size.z + this.#cell_size.y * this.#cell_size.y) / 2.0))
                         this.maze_body.addShape(
                             ramp_shape,
-                            new CANNON.Vec3(pixel_info.x * this.#cell_size.x, this.#cell_size.y * i + this.#cell_size.y/2.0, pixel_info.y * this.#cell_size.z),
+                            new CANNON.Vec3(pixel_info.x * this.#cell_size.x, this.#cell_size.y * i + this.#cell_size.y / 2.0, pixel_info.y * this.#cell_size.z),
                             new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -cell_type.variation * Math.PI / 2).mult(new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(1, 0, 0), Math.PI / 4))
                         );
                     }
@@ -468,72 +471,123 @@ export class Maze_Level extends Level {
     get_cell_size() { return this.#cell_size; }
     //if levels need to be dynamicly added or removed, then this need to be called to clean up certain loose objects
 
+    load_config(path = 'data/default_level.json') {
+        this.#file_loader.setResponseType('json');
+        this.#file_loader.load(path, (result) => this.config_loaded(result), undefined, () => this.config_loaded());
+        //note need to handle if there an error. probably build a default object
+        //to be used or skip config_loaded or have a specail cases to handle it
+        //also decide if this should handle the object directly if not a string (just pass it to config loaded)
+    }
+    config_loaded(config = undefined) {
+        console.log(config)
+        this.config = config; //need to verify it is vaild else use a fallback
+        //this will set up the level base on the config before
+        //passing it to resource loader to load resource/
+        //may need to store it in the object if vaild instead of passing it since
+        //it will need to be ref a few times
+        if (this.config) {
+            this.maze_image = this.config.level_image ? this.config.level_image : Maze_Level.default_source_image;
+        } else {
+            console.log('no config loaded')
+            this.maze_image = Maze_Level.default_source_image;
+        }
+        console.log(this.maze_image);
+
+        this.load_resources();
+    }
     //todo: handle this better. NOTE: awaiting any of the load_resources will break them TODO: maybe not use async functions or test it again when handle correctly
     load_resources() {
-        const self = this;
-        this.resources.on_load_end.connect(()=>this.on_resources_loaded());
-        //texture is for more detail, but normal map adds the texture from light depth
-        this.resources.load_resource('assets/texture.png', 'texture', Resource_Manager.KEYS.TYPES.TEXTURE);
-        //normal may or may not be correct. need to check the light order. also could see how bumbmap works if the lighting is simple
-        this.resources.load_resource('assets/normal.png', 'normal', Resource_Manager.KEYS.TYPES.TEXTURE);
+        this.resources.on_load_end.connect(() => this.resources_loaded());
+        if (this.config && this.config.textures) {
+            for (const [group_id, group] of Object.entries(this.config.textures)) {
+                for (const [id, path] of Object.entries(group)) {
+                    //note: may need to add group id to id, but also need to update the setters to use that id instead
+                    this.resources.load_resource(path, id, Resource_Manager.KEYS.TYPES.TEXTURE);
+                }
+            }
+        }
+        else {
+            console.log('no vaild config loaded, using default level resources')
+            //texture is for more detail, but normal map adds the texture from light depth
+            this.resources.load_resource('assets/texture.png', 'texture', Resource_Manager.KEYS.TYPES.TEXTURE);
+            //normal may or may not be correct. need to check the light order. also could see how bumbmap works if the lighting is simple
+            this.resources.load_resource('assets/normal.png', 'normal', Resource_Manager.KEYS.TYPES.TEXTURE);
 
-        //spec(metal) and ao could be merge into a single texture. https://threejs.org/docs/#MeshStandardMaterial has more info about the maps
-        this.resources.load_resource('assets/specular.png', 'specular', Resource_Manager.KEYS.TYPES.TEXTURE);
+            //spec(metal) and ao could be merge into a single texture. https://threejs.org/docs/#MeshStandardMaterial has more info about the maps
+            this.resources.load_resource('assets/specular.png', 'specular', Resource_Manager.KEYS.TYPES.TEXTURE);
 
-        this.resources.load_resource('assets/ao.png', 'ao', Resource_Manager.KEYS.TYPES.TEXTURE);
+            this.resources.load_resource('assets/ao.png', 'ao', Resource_Manager.KEYS.TYPES.TEXTURE);
 
-        this.resources.load_resource('assets/lightmap.png', 'lightmap', Resource_Manager.KEYS.TYPES.TEXTURE);
+            this.resources.load_resource('assets/lightmap.png', 'lightmap', Resource_Manager.KEYS.TYPES.TEXTURE);
+        }
     }
-    on_resources_loaded(){
-        this.resources.on_load_end.disconnect(()=>this.on_resources_loaded());
-        console.log('MEOOOW!!!!');
-        const texture = this.resources.get_texture('texture');
-        const normal = this.resources.get_texture('normal');
-        const specular = this.resources.get_texture('specular');
-        const ao = this.resources.get_texture('ao');
-        const lightmap = this.resources.get_texture('lightmap');
-        //texture.wrapS = texture.wrapT = 1000;
-        this.default_wall_mat.map = texture;
+    //might be better to move this to resource manager since it may be reusable there
+    convert_type(type, value) {
+        if (type === Resource_Manager.KEYS.TYPES.TEXTURE) {
+            return this.resources.get_texture(value);
+        }
+        if (type === 'number') {
+            return Number(value);
+        }
+        //'0xRRGGBB' conversion
+        if (type === 'hex') {
+            return parseInt(value, 16)
+        }
+        return value;
+    }
+    resources_loaded() {
+        this.resources.on_load_end.disconnect(() => this.resources_loaded());
+        if (this.config && this.config.materials) {
+            for (const [material_id, material_data] of Object.entries(this.config.materials)) {
+                for (const [property, value_data] of Object.entries(material_data)) {
+                    let type = 'String';
+                    let value = value_data;
+                    if (value_data.includes("::")) {
+                        const split_value = value_data.split("::");
+                        type = split_value[0];
+                        value = this.convert_type(type, split_value[1]);
+                        console.log(split_value[1])
 
-        this.default_wall_mat.normalMap = normal;
-        this.default_floor_mat.normalMap = normal;
-        this.default_ceil_mat.normalMap = normal;
-
-        this.default_wall_mat.metalnessMap = specular;
-        this.default_floor_mat.metalnessMap = specular;
-        this.default_ceil_mat.metalnessMap = specular;
-
-        this.default_wall_mat.aoMap = ao;
-        this.default_floor_mat.aoMap = ao;
-        this.default_ceil_mat.aoMap = ao;
-
-        this.default_wall_mat.lightmap = lightmap;
-        this.default_floor_mat.lightmap = lightmap;
-        this.default_ceil_mat.lightmap = lightmap;
-
-        this.default_wall_mat.needsUpdate = true;
-        this.default_floor_mat.needsUpdate = true;
-        this.default_ceil_mat.needsUpdate = true;
-
+                    }
+                    if (value === null || value === undefined) {
+                        console.log('Warning: maze_level resource loader material value to set is ', value, ' for ', property)
+                    }
+                    const material = this.resources.get_material(
+                        material_id,
+                        new MeshStandardMaterial({ color: 0x6a7a8c, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 10 })
+                    )
+                    if (property === 'color') {
+                        material[property].set(value)
+                    }
+                    else {
+                        material[property] = value;
+                    }
+                    //I hope this get check on next update and not ran as set. internet been acting up so it is harder to check things
+                    material.needsUpdate = true;
+                }
+            }
+        }
         this.start_level();
-        
+
     }
-    start_level(){
+    start_level() {
         console.log('starting level')
         this.#level_image = new Level_Image(this.maze_image);
         this.level_image.on_ready = () => {
-            this.on_load.emit();//may be better added when the image is changed, but for now it is here 
+            this.on_load.emit();//may be better added when the image is changed, but for now it is here. NOTE: may need to call it before any change happen since textures may
+            //get reloaded
             console.log('started building', this)
             this.build()
         };
-        
+
     }
-    constructor(canvas, world, source_image = Maze_Level.default_source_image) {
+    constructor(canvas, world, config_path = 'data/default_level.json') {
         super(world);
         this.resources = Resource_Manager.default_instance; //cache the Resource_Manager so it could be overrided
         //may need to call loading before or after creating the level where it can be awaited
-        this.load_resources();
-        this.maze_image = source_image;
+        console.log(config_path)
+        this.load_config(config_path);
+        //this.maze_image = source_image;
 
         //this.renderer = this.resources.get_renderer(
         //    'main',

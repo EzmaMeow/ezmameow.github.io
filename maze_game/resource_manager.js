@@ -29,11 +29,15 @@ export class Resource_Manager {
     #geometries = new Map();
     #textures = new Map();
 
-    //loading manager may be importaint so overriding ther ref may not be ideal. also loaders would need
-    //to ref it so setting it would need to reassign all the ref
+    //load manager handles bulk loading state. the one store here is for default cases
+    //loaders probably will use the same manager. this means that diffrent types will be bundle together in the manager
+    //so either they need to be called in desire load order or allow to be added all at the same time.
     #loading_manager = new LoadingManager();
     get loading_manager() { return this.#loading_manager; }
     texture_loader = new TextureLoader(this.loading_manager);
+    //may not include file loader here since it results are normal js types and
+    //do not need to be manage. also file loader parce type can be change, so it may be better 
+    //to create it as needed. could always use the resource manager load manager to help with bulk loading
 
     //may use this instead of allowing a source to reduce function declartions
     #get_type_source(type) {
