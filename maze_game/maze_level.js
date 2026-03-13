@@ -26,14 +26,20 @@ export class Level_Image {
         source.context.drawImage(source.#image, 0, 0);
         source.data = source.context.getImageData(0, 0, source.#image.width, source.#image.height).data;
         source.is_ready = true;
+        console.log('image size : ', source.image.height, this)
         source.on_ready();
     }
     //GETTERS AND SETTERS
     //may not store the image or other varibles related to the dom
     set image(value) {
+        const old_image = this.#image;
+        if (this.#image === value){ return; }
         this.#image = value;
         if (value) {
             this.#image.onload = (event) => { this.#on_load(event, this); };
+        }
+        if(old_image){
+             this.#image.onload = null;
         }
     }
     get image() {
@@ -71,6 +77,12 @@ export class Level_Image {
             callable(this.get_pixel_info(i));
         }
     }
+    destroy(){
+        if(this.image){
+             this.image.onload = null;
+        }
+
+    }
 
     constructor(source_image) {
         this.image = new Image();
@@ -95,6 +107,19 @@ export class Maze_Level extends Level {
     #on_load = new Signal(); get on_load() { return this.#on_load; }
 
     #level_image; get level_image() { return this.#level_image; }
+    set level_image(value){
+        if (value === this.#level_image){return;}
+        const old_level_image = this.#level_image;
+        this.#level_image = value;
+        if(this.#level_image){
+            this.#level_image.on_ready = () => this.level_image_ready();
+        }
+        if (old_level_image){
+            old_level_image.on_ready = null;
+            old_level_image.destroy();
+        }
+
+    }
     //TODO: allow this to be set, but would need to:
     //update all cache object base off of it 
     //rebuild the world and adjust all object to the new positions
@@ -249,14 +274,16 @@ export class Maze_Level extends Level {
 
         if (this.maze_body) {
             this.maze_body.shapes.length = 0;
+            this.world.removeBody(this.maze_body);
+            //will remake the body since there may be too many shapes to manually remove and length = 0 dose not seem to work.
         }
-        else {
+        //else {
             this.maze_body = new CANNON.Body({
                 mass: 0,
                 type: CANNON.Body.STATIC
             });
             this.world.addBody(this.maze_body);
-        }
+        //}
         //Todo: move the plane geo to geos and have a function or getter that update them
         this.level_image.for_each_pixel((pixel_info) => {
             //cacheing these in the resources so they do not need to be manually disposed (mostly the borders handling it would be a pain to disposed). 
@@ -472,6 +499,7 @@ export class Maze_Level extends Level {
     //if levels need to be dynamicly added or removed, then this need to be called to clean up certain loose objects
 
     load_config(path = 'data/default_level.json') {
+        this.clear_cached_resources();
         this.#file_loader.setResponseType('json');
         this.#file_loader.load(path, (result) => this.config_loaded(result), undefined, () => this.config_loaded());
         //note need to handle if there an error. probably build a default object
@@ -501,6 +529,7 @@ export class Maze_Level extends Level {
         if (this.config && this.config.textures) {
             for (const [group_id, group] of Object.entries(this.config.textures)) {
                 for (const [id, path] of Object.entries(group)) {
+                    this.cache_created_resources(Resource_Manager.KEYS.TYPES.TEXTURE, id);
                     //note: may need to add group id to id, but also need to update the setters to use that id instead
                     this.resources.load_resource(path, id, Resource_Manager.KEYS.TYPES.TEXTURE);
                 }
@@ -535,51 +564,82 @@ export class Maze_Level extends Level {
         }
         return value;
     }
+    //only for simple cases where there is one set of ::
+    parce_type_string(string, convert_value = true) {
+        if (string.includes("::")) {
+            const result = string.split("::");
+            if (convert_value) {
+                result[1] = this.convert_type(result[0], result[1]);
+            }
+            return result;
+        }
+        return ['string', string];
+    }
+    //store created resources by id so they can be removed
+    //when reloading. This is for cases where new resource have a unquie id
+    //and will likly not be overriden on reloaded. This could also filter out
+    //importaint id if needed, but they probably should be store in self
+    //could change resource manager to allow source to be overriden and keep the ref here
+    //but the idea is to allow resource to be shared globally if not unquie.
+    //include existing is to override ignoring type/id pairs that already exist
+    //so if false, it needs to be called before setting that resource.
+    cache_created_resources(type, id, include_existing = false) {
+        if (!this.cache_resources) { this.cache_resources = {}; }
+        if (!this.cache_resources[type]) { this.cache_resources[type] = new Set(); }
+        if (!this.resources.has_resource(id, type) || include_existing) {
+            this.cache_resources[type].add(id);
+        }
+    }
+    //still need to test disposing logic, but should be called when old level state is no longer needed
+    //and before new level state is created
+    clear_cached_resources() {
+        if (!this.cache_resources) { return; }
+        for (const [type, ids] of Object.entries(this.cache_resources)) {
+            for (const id of ids) {
+                this.resources.dispose(id, type);
+            }
+        }
+    }
     resources_loaded() {
         this.resources.on_load_end.disconnect(() => this.resources_loaded());
         if (this.config && this.config.materials) {
             for (const [material_id, material_data] of Object.entries(this.config.materials)) {
                 for (const [property, value_data] of Object.entries(material_data)) {
-                    let type = 'String';
-                    let value = value_data;
-                    if (value_data.includes("::")) {
-                        const split_value = value_data.split("::");
-                        type = split_value[0];
-                        value = this.convert_type(type, split_value[1]);
-                        console.log(split_value[1])
-
+                    const parced_value = this.parce_type_string(value_data);
+                    
+                    if (parced_value[1] === null || parced_value[1] === undefined) {
+                        console.log('Warning: maze_level resource loader material value to set is ', parced_value[1], ' for ', property)
                     }
-                    if (value === null || value === undefined) {
-                        console.log('Warning: maze_level resource loader material value to set is ', value, ' for ', property)
-                    }
+                    //need to be call before setting so it can ignore preloaded resources to clear on reload
+                    this.cache_created_resources(Resource_Manager.KEYS.TYPES.MATERIAL, material_id);
                     const material = this.resources.get_material(
                         material_id,
                         new MeshStandardMaterial({ color: 0x6a7a8c, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 10 })
                     )
                     if (property === 'color') {
-                        material[property].set(value)
+                        material[property].set(parced_value[1])
                     }
                     else {
-                        material[property] = value;
+                        material[property] = parced_value[1];
                     }
                     //I hope this get check on next update and not ran as set. internet been acting up so it is harder to check things
                     material.needsUpdate = true;
                 }
             }
         }
+        console.log(this.cache_resources);
         this.start_level();
 
     }
     start_level() {
         console.log('starting level')
-        this.#level_image = new Level_Image(this.maze_image);
-        this.level_image.on_ready = () => {
-            this.on_load.emit();//may be better added when the image is changed, but for now it is here. NOTE: may need to call it before any change happen since textures may
-            //get reloaded
-            console.log('started building', this)
-            this.build()
-        };
+        this.level_image = new Level_Image(this.maze_image);
 
+    }
+    level_image_ready(){
+        this.on_load.emit();
+        console.log('started building', this)
+        this.build()
     }
     constructor(canvas, world, config_path = 'data/default_level.json') {
         super(world);

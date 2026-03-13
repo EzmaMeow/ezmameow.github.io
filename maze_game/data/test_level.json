@@ -1,0 +1,38 @@
+{
+    "level_image": "assets/test_maze.png",
+    "textures": {
+        "default": {
+            "texture": "assets/texture.png",
+            "normal": "assets/normal.png",
+            "specular": "assets/specular.png",
+            "lightmap": "assets/lightmap.png",
+            "ao": "assets/ao.png"
+        }
+    },
+    "materials": {
+        "default_wall": {
+            "color": "#6a7a8c",
+            "map": "texture::texture",
+            "normalMap": "texture::normal",
+            "metalnessMap": "texture::specular",
+            "aoMap": "texture::ao",
+            "lightmap": "texture::lightmap"
+        },
+        "default_floor": {
+            "color": "#7f7f7f",
+            "map": "texture::texture",
+            "normalMap": "texture::normal",
+            "metalnessMap": "texture::specular",
+            "aoMap": "texture::ao",
+            "lightmap": "texture::lightmap"
+        },
+        "default_ceil": {
+            "color": "#6f7d6f",
+            "map": "texture::texture",
+            "normalMap": "texture::normal",
+            "metalnessMap": "texture::specular",
+            "aoMap": "texture::ao",
+            "lightmap": "texture::lightmap"
+        }
+    }
+}

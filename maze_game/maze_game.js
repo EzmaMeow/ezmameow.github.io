@@ -34,7 +34,7 @@ export class Maze_Game extends Game {
 	static world; //main world
 	debug_mode = false;
 	//called when there is a change that may affect a major state such as pausing, starting, loading. used for html elements to update themselves (or untill dedicated signals are added)
-	#on_state_changed = new Signal(); get on_state_changed(){return this.#on_state_changed;}
+	#on_state_changed = new Signal(); get on_state_changed() { return this.#on_state_changed; }
 	//NOTE: Key events are redirected to this, but some may need to be redirected to player
 	//maybe have a return so the key call chain can stop for more complex cases
 	on_key_down(event) {
@@ -56,6 +56,11 @@ export class Maze_Game extends Game {
 			}
 			else {
 				this.debug_mode = true;
+				if (this.game_started && this.game_started > 0) {
+					this.game_started = -1
+					this.level.load_config('/data/test_level.json'); //okay seem there may be a data.length limit or need to handle it in parts
+					//also need to make sure the physics bodys are removed
+				}
 			}
 			//let test = this.player.camera.position.clone();
 			//let direction = new THREE.Vector3();
@@ -143,10 +148,10 @@ export class Maze_Game extends Game {
 			touch_start_x: 0.0,
 			touch_start_y: 0.0
 		};
-		this.level.on_ready.connect(()=>{
-			if (!this.game_started){
+		this.level.on_ready.connect(() => {
+			if (!this.game_started) {
 				startGame(this);
-				this.game_started = true;
+				this.game_started = 1; //using int so that the started state can change (for testing. -1 is reloading atm)
 				console.log('mew game loaded', this.player.position, this.player.physics_body.position);
 			}
 		})

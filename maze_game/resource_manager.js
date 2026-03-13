@@ -52,7 +52,6 @@ export class Resource_Manager {
     dispose(id, type) {
         const source = this.#get_type_source(type);
         if (source) {
-            const value = source.get(id);
             if (id === Resource_Manager.ALL_KEY) {
                 for (const [loop_key, loop_value] of source) {
                     if (loop_value) {
@@ -65,6 +64,7 @@ export class Resource_Manager {
                 }
                 return
             }
+            const value = source.get(id);
             if (value) {
                 if (type === Resource_Manager.KEYS.TYPES.RENDERER) {
                     renderer.renderLists.dispose();
