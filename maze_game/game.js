@@ -45,7 +45,7 @@ export class Game {
 
     }
     remove_from_physics(object) {
-        this.#physic_objects.remove(object)
+        this.#physic_objects.delete(object)
     }
     add_to_updates(object) {
         if (this.#update_objects.has(object)) { return }
@@ -54,7 +54,7 @@ export class Game {
         }
     }
     remove_from_updates(object) {
-        this.#update_objects.remove(object)
+        this.#update_objects.delete(object)
     }
 
     // performance.now()

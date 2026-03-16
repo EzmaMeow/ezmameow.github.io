@@ -56,8 +56,10 @@ export class Maze_Game extends Game {
 			}
 			else {
 				this.debug_mode = true;
-				if (this.game_started && this.game_started > 0) {
-					this.game_started = -1
+				//need to design a better game state for loading and ready. I would like to use bitflags so values greater than 0 means something going on.
+				if (this.game_started && !this.is_loading) {
+					this.is_loading = true
+					this.on_state_changed.emit();
 					this.level.load_config('/data/test_level.json'); //okay seem there may be a data.length limit or need to handle it in parts
 					//also need to make sure the physics bodys are removed
 				}
@@ -154,6 +156,9 @@ export class Maze_Game extends Game {
 				this.game_started = 1; //using int so that the started state can change (for testing. -1 is reloading atm)
 				console.log('mew game loaded', this.player.position, this.player.physics_body.position);
 			}
+			this.is_loading = false;
+			this.on_state_changed.emit();
+
 		})
 		//this.level.level_image.on_ready = () => {
 		//	this.level.build()
@@ -184,6 +189,15 @@ function startGame(maze_game) {
 	const player = maze_game.player;
 	const camera = maze_game.camera;
 	const player_controller = maze_game.player_controller;
+
+
+	//console.log('webworker test start')
+	//const worker = new Worker('generic_webworker.js');
+	//worker.onmessage = (event) => {
+	//	console.log('webworker message received: ', event)
+	//}
+	//worker.postMessage({seed: 12345, chunkSize: 64 });
+	//console.log('webworker sent message')
 
 	//box test
 	//const box = level.get_cell_bounds();
