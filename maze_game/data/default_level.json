@@ -1,5 +1,10 @@
 {
     "level_image": "assets/maze.png",
+    "cell_size": {
+        "x": 3,
+        "y": 3,
+        "z": 3
+    },
     "textures": {
         "default": {
             "texture": "assets/texture.png",
@@ -33,6 +38,24 @@
             "metalnessMap": "texture::specular",
             "aoMap": "texture::ao",
             "lightmap": "texture::lightmap"
+        }
+    },
+    "objects": {
+        "player_start": {
+            "type": "spawn",
+            "cell_position": {
+                "x": 0,
+                "y": 0,
+                "z": 8
+            },
+            "offset_position": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+            },
+            "metadata": {
+
+            }
         }
     }
 }

@@ -37,6 +37,15 @@ export class Player_Character extends Physics_Object {
         super._add_physics(world);
         this.movement_component.world = world;
     }
+    set_position(x=0.0,y=0.0,z=0.0){
+        this.physics_body.position.set(
+            x + this.center_position.x,
+            y + this.center_position.y,
+            z + this.center_position.z
+        )
+        this.position.copy(this.physics_body.position)
+
+    }
     jump() {
         this.play_footsteps();
     }
@@ -61,8 +70,18 @@ export class Player_Character extends Physics_Object {
         const radius = options['radius'] ? options['radius'] : 0.25;
         //Note options keys that uses cap first letters ref to class ref
         const movement_component_class = options['Movement_Component'] ? options['Movement_Component'] : Movement_Component
-        if (options['position']) { this.position.copy(options['position']) }
-        this.position.y += height/2.0 + radius;//adding half the height since I belive the orgin is center, this should set it to the botton center. also need to apply the radius of the lower part
+
+        //may be best to keep it at xy+ for now
+        this.center_position = new Vector3(0.0, height/2.0 + radius,0.0); //storing the height for set_position or any other vector offset. this us like origns, but i guess inverted. center of the body
+
+        if (options['position']) { 
+            this.set_position(
+                options['position'].x?options['position'].x:0.0,
+                options['position'].y?options['position'].y:0.0,
+                options['position'].z?options['position'].z:0.0
+            ) 
+        }
+        //this.position.add(this.center_position);//adding half the height since I belive the orgin is center, this should set it to the botton center. also need to apply the radius of the lower part
         if (options['controller']) {
             //decide if a movement component class should be pass and how to handle ir
             this.movement_component = new movement_component_class(options['controller'])

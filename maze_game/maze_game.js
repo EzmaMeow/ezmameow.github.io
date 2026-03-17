@@ -139,7 +139,7 @@ export class Maze_Game extends Game {
 		const player = this.player;
 		//const camera = camera //new THREE.PerspectiveCamera(50, canvas_body.clientWidth / canvas_body.clientHeight, 0.001, 32);
 		//this.camera = camera;
-		camera.position.y = 0.5
+		camera.position.copy(this.player.center_position);
 		this.player.add(camera);
 		this.settings = new State();
 		//may want to rename it to config or something since input manager handling the bulk of input. this will just handle settings
@@ -151,7 +151,27 @@ export class Maze_Game extends Game {
 			touch_start_y: 0.0
 		};
 		this.level.on_ready.connect(() => {
+			let player_x = 0.0; let player_y = 0.0; let player_z = 0.0;
+			if (this.level.config.objects && this.level.config.objects.player_start) {
+				const spawn = this.level.config.objects.player_start
+				if (spawn.cell_position) {
+					player_x = Number(spawn.cell_position.x) * this.level.cell_size.x;
+					player_y = Number(spawn.cell_position.y) * this.level.cell_size.y;
+					player_z = Number(spawn.cell_position.z) * this.level.cell_size.z;
+				}
+				if (spawn.offset_position) {
+					player_x += Number(spawn.offset_position.x);
+					player_y += Number(spawn.offset_position.y);
+					player_z += Number(spawn.offset_position.z);
+				}
+			}
+			player.set_position(player_x, player_y, player_z);
+			console.log(player.position)
+			console.log(player.physics_body.position)
 			if (!this.game_started) {
+				//not when traveling between level, may need to store exit data. this data is info attach to the exit as well as player state when interacted
+				//which will be used to figure the next level spawn else it will use the default spawn point
+
 				startGame(this);
 				this.game_started = 1; //using int so that the started state can change (for testing. -1 is reloading atm)
 				console.log('mew game loaded', this.player.position, this.player.physics_body.position);
@@ -181,7 +201,8 @@ export class Maze_Game extends Game {
 
 //TODO: try to use a physics library, custom collsion seem to broke. walls will be cubes that hopefully wont cost much. not sure what broke in the old collsion system
 
-
+//TODO: Seems js event listerners are generated while moving. should check if events are created related to player or collsion still
+//it is clean up over time and might be created by a diffrent systems so it might not be an issue.
 function startGame(maze_game) {
 	maze_game.on_state_changed.emit();
 	//main ref

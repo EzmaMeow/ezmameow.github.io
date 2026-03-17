@@ -1,5 +1,10 @@
 {
     "level_image": "assets/test_maze.png",
+    "cell_size": {
+        "x": 3,
+        "y": 3,
+        "z": 3
+    },
     "textures": {
         "default": {
             "texture": "assets/texture.png",
