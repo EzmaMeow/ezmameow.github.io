@@ -60,7 +60,7 @@ export class Maze_Game extends Game {
 				if (this.game_started && !this.is_loading) {
 					this.is_loading = true
 					this.signal_state_changed.emit();
-					this.level.load_config('/data/test_level.json'); //okay seem there may be a data.length limit or need to handle it in parts
+					this.level.load_config('./data/test_level.json'); //okay seem there may be a data.length limit or need to handle it in parts
 					//also need to make sure the physics bodys are removed
 				}
 			}
