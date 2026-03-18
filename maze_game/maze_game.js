@@ -193,8 +193,8 @@ export class Maze_Game extends Game {
 			const width = canvas_body.clientWidth;
 			const height = canvas_body.clientHeight;
 			console.log('resizing', width, height);
-			camera.aspect = width / height;
-			camera.updateProjectionMatrix()
+			this.camera.aspect = width / height;
+			this.camera.updateProjectionMatrix()
 			this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2.0));
 			this.renderer.setSize(width, height);
 			this.resize = false;
