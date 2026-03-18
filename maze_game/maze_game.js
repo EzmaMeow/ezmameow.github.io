@@ -118,17 +118,22 @@ export class Maze_Game extends Game {
 	}
 	on_ready() {
 		let player_x = 0.0; let player_y = 0.0; let player_z = 0.0;
-		if (this.level.config.objects && this.level.config.objects.player_start) {
-			const spawn = this.level.config.objects.player_start
-			if (spawn.cell_position) {
-				player_x = Number(spawn.cell_position.x) * this.level.cell_size.x;
-				player_y = Number(spawn.cell_position.y) * this.level.cell_size.y;
-				player_z = Number(spawn.cell_position.z) * this.level.cell_size.z;
-			}
-			if (spawn.offset_position) {
-				player_x += Number(spawn.offset_position.x);
-				player_y += Number(spawn.offset_position.y);
-				player_z += Number(spawn.offset_position.z);
+		console.log(this.level.config)
+		if (this.level.config) {
+			if (this.level.config.objects) {
+				if (this.level.config.objects.player_start) {
+					const spawn = this.level.config.objects.player_start
+					if (spawn.cell_position) {
+						player_x = Number(spawn.cell_position.x) * this.level.cell_size.x;
+						player_y = Number(spawn.cell_position.y) * this.level.cell_size.y;
+						player_z = Number(spawn.cell_position.z) * this.level.cell_size.z;
+					}
+					if (spawn.offset_position) {
+						player_x += Number(spawn.offset_position.x);
+						player_y += Number(spawn.offset_position.y);
+						player_z += Number(spawn.offset_position.z);
+					}
+				}
 			}
 		}
 		this.player.set_position(player_x, player_y, player_z);
@@ -148,7 +153,7 @@ export class Maze_Game extends Game {
 	start_game() {
 		this.signal_state_changed.emit();
 		const game = this;
-		function loop(){
+		function loop() {
 			game.main_loop();
 			requestAnimationFrame(loop);
 		}
