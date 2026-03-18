@@ -5,120 +5,7 @@ import * as CANNON from "https://esm.sh/cannon-es";
 import { Resource_Manager } from './resource_manager.js'
 import { Level } from './game_scenes.js'
 import { Signal } from './game_core.js'
-
-//handles the image data of a level built from a image
-export class Level_Image {
-    #image; //Image
-
-    data;	//ImageData
-    canvas;
-    context;
-    is_ready = false; //backup incase it is ready after init
-
-
-    //SIGNALS, EVENTS, AND CALLABLES
-    //overriable function to be called when image is loaded and data is populated
-    on_ready() {
-        console.log('meow ready ', this.is_ready);
-    }
-
-    #on_load(event, source = this) {
-        source.context.drawImage(source.#image, 0, 0);
-        source.data = source.context.getImageData(0, 0, source.#image.width, source.#image.height).data;
-        source.is_ready = true;
-        console.log('image size : ', source.image.height, this)
-        source.on_ready();
-    }
-    //GETTERS AND SETTERS
-    //may not store the image or other varibles related to the dom
-    set image(value) {
-        const old_image = this.#image;
-        if (this.#image === value) { return; }
-        this.#image = value;
-        if (value) {
-            this.#image.onload = (event) => { this.#on_load(event, this); };
-        }
-        if (old_image) {
-            this.#image.onload = null;
-        }
-    }
-    get image() {
-        return this.#image
-    }
-    //METHOODS
-    convert_coord_to_index(x = 0, y = 0) {
-        if (x >= this.image.width || y >= this.image.height || x < 0.0 || y < 0.0) {
-            return -1
-        }
-        let id = y * this.image.width + x;
-        return id * 4;
-    }
-    is_pixel_at_index(index) {
-        return (index < 0 || index >= this.data.length)
-    }
-    get_pixel_id(index) {
-        return Math.floor(index / 4)
-    }
-    get_pixel_x(id) {
-        return id > 0 ? id % this.image.width : 0;
-    }
-    get_pixel_y(id) {
-        return id > 0 ? Math.floor(id / this.image.width) : 0;
-    }
-    get_pixel_r(index) {
-        return this.data[index];
-    }
-    get_pixel_g(index) {
-        return this.data[index + 1];
-    }
-    get_pixel_b(index) {
-        return this.data[index + 2];
-    }
-    get_pixel_a(index) {
-        return this.data[index + 3];
-    }
-    get_pixel_info(index, pixel_data = {}) {
-        if (this.is_pixel_at_index(index)) {
-            pixel_data.id = -1;
-            pixel_data.x = 0;
-            pixel_data.y = 0;
-            pixel_data.r = 0;
-            pixel_data.g = 0;
-            pixel_data.b = 0;
-            pixel_data.a = 0;
-        }
-        //let pixel_data = { 'id': Math.floor(index / 4) };
-        pixel_data.id = this.get_pixel_id(index);
-
-        pixel_data.x = this.get_pixel_x(pixel_data.id);
-        pixel_data.y = this.get_pixel_y(pixel_data.id);
-
-        pixel_data.r = this.get_pixel_r(index);
-        pixel_data.g = this.get_pixel_g(index);
-        pixel_data.b = this.get_pixel_b(index);
-        pixel_data.a = this.get_pixel_a(index);
-        return pixel_data;
-    }
-    for_each_pixel(callable = (pixel_info) => { }, start = 0, end = this.data.length, pixel_info_ref = undefined) {
-        start = Math.floor(start / 4) * 4;
-        for (let i = start; i < end; i += 4) {
-            callable(this.get_pixel_info(i, pixel_info_ref ? pixel_info_ref : {}));
-        }
-    }
-    destroy() {
-        if (this.image) {
-            this.image.onload = null;
-        }
-
-    }
-
-    constructor(source_image) {
-        this.image = new Image();
-        this.canvas = document.createElement("canvas");
-        this.context = this.canvas.getContext("2d");
-        this.image.src = source_image;
-    }
-}
+import { Canvas_Image_Buffer } from './lib/canvas_image_buffer.js'
 
 export class Maze_Level extends Level {
     static default_source_image = "assets/maze.png";
@@ -131,9 +18,9 @@ export class Maze_Level extends Level {
     #file_loader = new FileLoader();
 
     //called when ready to used. will be called when ever the level is rebuilt
-    #on_ready = new Signal(); get on_ready() { return this.#on_ready; }
+    #signal_ready = new Signal(); get signal_ready() { return this.#signal_ready; }
     //this will be called when the level is changing aka loading image/file/data. should be used to trigger loading screens and pausing/restarting gameplay
-    #on_load = new Signal(); get on_load() { return this.#on_load; }
+    #signal_load = new Signal(); get signal_load() { return this.#signal_load; }
 
     #level_image; get level_image() { return this.#level_image; }
     set level_image(value) {
@@ -459,7 +346,7 @@ export class Maze_Level extends Level {
         }
     }
 
-    build_maze(on_ready) {
+    build_maze() {
         let segment_id = 0;
         const size = 64 * 4;
         this.clear_maze_segments();
@@ -538,7 +425,7 @@ export class Maze_Level extends Level {
                 //probably should be an object of type, cell point, local position(or offset), and other metadata
                 //maybe called entities or objects
                 this.ready();
-                this.on_ready.emit();
+                this.signal_ready.emit();
             }
         }
         requestAnimationFrame(step);
@@ -604,7 +491,7 @@ export class Maze_Level extends Level {
         this.create_bounds();
         this.build_maze();
 
-        //this.on_ready.emit();
+        //this.signal_ready.emit();
     }
     //this is here to prevent setting it
     get_cell_size() { return this.#cell_size; }
@@ -649,7 +536,7 @@ export class Maze_Level extends Level {
     }
     //todo: handle this better. NOTE: awaiting any of the load_resources will break them TODO: maybe not use async functions or test it again when handle correctly
     load_resources() {
-        this.resources.on_load_end.connect(() => this.resources_loaded());
+        this.resources.signal_load_end.connect(() => this.resources_loaded());
         if (this.config && this.config.textures) {
             for (const [group_id, group] of Object.entries(this.config.textures)) {
                 for (const [id, path] of Object.entries(group)) {
@@ -725,7 +612,7 @@ export class Maze_Level extends Level {
         }
     }
     resources_loaded() {
-        this.resources.on_load_end.disconnect(() => this.resources_loaded());
+        this.resources.signal_load_end.disconnect(() => this.resources_loaded());
         if (this.config && this.config.materials) {
             for (const [material_id, material_data] of Object.entries(this.config.materials)) {
                 for (const [property, value_data] of Object.entries(material_data)) {
@@ -757,11 +644,11 @@ export class Maze_Level extends Level {
     }
     start_level() {
         console.log('starting level')
-        this.level_image = new Level_Image(this.maze_image);
+        this.level_image = new Canvas_Image_Buffer(this.maze_image);
 
     }
     level_image_ready() {
-        this.on_load.emit();
+        this.signal_load.emit();
         console.log('started building', this)
         this.build()
     }

@@ -17,11 +17,11 @@ export class Resource_Manager {
     }); //NOTE: values can be changes, but the container type is locked
     static get KEYS() { return this.#KEYS; }
 
-    #on_load_end = new Signal(); get on_load_end(){return this.#on_load_end;}
-    #on_load_start = new Signal(); get on_load_start(){return this.#on_load_start;}
-    #on_load_progress = new Signal(); get on_load_progress(){return this.#on_load_progress;}
-    #on_load_error = new Signal(); get on_load_error(){return this.#on_load_error;}
-    #on_resource_load = new Signal(); get on_resource_load(){return this.#on_resource_load;}
+    #signal_load_end = new Signal(); get signal_load_end(){return this.#signal_load_end;}
+    #signal_load_start = new Signal(); get signal_load_start(){return this.#signal_load_start;}
+    #signal_load_progress = new Signal(); get signal_load_progress(){return this.#signal_load_progress;}
+    #signal_load_error = new Signal(); get signal_load_error(){return this.#signal_load_error;}
+    #signal_resource_load = new Signal(); get signal_resource_load(){return this.#signal_resource_load;}
     //#signals = new Map();//reserver for callbacks in responce to changes that may take time(should be an object of maps if so)
 
     #renderers = new Map(); //there may be more that one renderer, so this is here to handle them
@@ -160,25 +160,25 @@ export class Resource_Manager {
         }
     }
     load_start(url, items_loaded, items_total) {
-        this.on_load_start.emit(url, items_loaded, items_total);
+        this.signal_load_start.emit(url, items_loaded, items_total);
         console.log('started loading: ', url, ' ', items_loaded, ' ', items_total)
     }
     load_end() {
-        this.on_load_end.emit();
+        this.signal_load_end.emit();
         //NOTE: this is called one all resources are loaded
         console.log('loading is finished')
     }
     load_error(url) {
-        this.on_load_error.emit(url);
+        this.signal_load_error.emit(url);
         console.log('failed to load: ', url)
     }
     load_progress(url, items_loaded, items_total) {
-        this.on_load_progress.emit(url, items_loaded, items_total);
+        this.signal_load_progress.emit(url, items_loaded, items_total);
         console.log('loading: ', url, ' ', items_loaded, ' ', items_total)
     }
     resource_loaded(id, type, result, source) {
         this.set_resource(id, result, source);
-        this.on_resource_load.emit(id, type, result);
+        this.signal_resource_load.emit(id, type, result);
     }
     //decided to try to wrap it in a promise so it could be awaited, but kept the signals so await is not nessary
     load_resource(file, id, type, source = null, loader = null) {

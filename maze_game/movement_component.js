@@ -13,7 +13,7 @@ export class Movement_Component {
     }
     static get MOVEMENT_STATE() { return this.#MOVEMENT_STATE; }
     movement_state = Movement_Component.MOVEMENT_STATE.IDLE;
-    #on_jump = new Signal(); get on_jump() { return this.#on_jump }
+    #signal_jump = new Signal(); get signal_jump() { return this.#signal_jump }
 
     #world = null; get world() { return this.#world; }//This will interface with the world
     set world(value) {
@@ -43,15 +43,15 @@ export class Movement_Component {
     get controller() {
         if (!this.#controller) {
             this.#controller = new Controller();
-            this.controller.on_action.connect(() => this.jump());
+            this.controller.signal_action.connect(() => this.jump());
         }
         return this.#controller
     }
     set controller(new_controller) {
         const old_controller = this.#controller;
         this.#controller = new_controller;
-        if (this.#controller) { this.#controller.on_action.connect(() => this.jump()); }
-        if (old_controller) { old_controller.on_action.disconnect(() => old_controller.jump()); }
+        if (this.#controller) { this.#controller.signal_action.connect(() => this.jump()); }
+        if (old_controller) { old_controller.signal_action.disconnect(() => old_controller.jump()); }
     }
     get_speed() {
         return this.#max_speed * this.controller.states.speed * this.speed_mod * (this.is_on_ground() ? 1.0 : 0.25);//too much speed in the air causes odd long grabbling hops. 
@@ -67,7 +67,7 @@ export class Movement_Component {
             this.body.velocity.y = this.jump_strength; //setting it is risky, but works for now. adding causes it to stack up which would require more control to fix
             this.movement_state &= ~Movement_Component.MOVEMENT_STATE.GROUNDED; //setting to not grounded to reduce chances of it being called a few times before update
             //may be better to add a flag and add during update
-            this.on_jump.emit()
+            this.signal_jump.emit()
         }
     }
     physics_update(delta = 1.0) {

@@ -34,7 +34,7 @@ export class Maze_Game extends Game {
 	static world; //main world
 	debug_mode = false;
 	//called when there is a change that may affect a major state such as pausing, starting, loading. used for html elements to update themselves (or untill dedicated signals are added)
-	#on_state_changed = new Signal(); get on_state_changed() { return this.#on_state_changed; }
+	#signal_state_changed = new Signal(); get signal_state_changed() { return this.#signal_state_changed; }
 	//NOTE: Key events are redirected to this, but some may need to be redirected to player
 	//maybe have a return so the key call chain can stop for more complex cases
 	on_key_down(event) {
@@ -59,7 +59,7 @@ export class Maze_Game extends Game {
 				//need to design a better game state for loading and ready. I would like to use bitflags so values greater than 0 means something going on.
 				if (this.game_started && !this.is_loading) {
 					this.is_loading = true
-					this.on_state_changed.emit();
+					this.signal_state_changed.emit();
 					this.level.load_config('/data/test_level.json'); //okay seem there may be a data.length limit or need to handle it in parts
 					//also need to make sure the physics bodys are removed
 				}
@@ -116,6 +116,92 @@ export class Maze_Game extends Game {
 			this.resize = true;
 		}
 	}
+	on_ready() {
+		let player_x = 0.0; let player_y = 0.0; let player_z = 0.0;
+		if (this.level.config.objects && this.level.config.objects.player_start) {
+			const spawn = this.level.config.objects.player_start
+			if (spawn.cell_position) {
+				player_x = Number(spawn.cell_position.x) * this.level.cell_size.x;
+				player_y = Number(spawn.cell_position.y) * this.level.cell_size.y;
+				player_z = Number(spawn.cell_position.z) * this.level.cell_size.z;
+			}
+			if (spawn.offset_position) {
+				player_x += Number(spawn.offset_position.x);
+				player_y += Number(spawn.offset_position.y);
+				player_z += Number(spawn.offset_position.z);
+			}
+		}
+		this.player.set_position(player_x, player_y, player_z);
+		console.log(this.player.position)
+		console.log(this.player.physics_body.position)
+		if (!this.game_started) {
+			//not when traveling between level, may need to store exit data. this data is info attach to the exit as well as player state when interacted
+			//which will be used to figure the next level spawn else it will use the default spawn point
+			this.start_game();
+			//startGame(this);
+			this.game_started = 1; //using int so that the started state can change (for testing. -1 is reloading atm)
+			console.log('mew game loaded', this.player.position, this.player.physics_body.position);
+		}
+		this.is_loading = false;
+		this.signal_state_changed.emit();
+	}
+	start_game() {
+		this.signal_state_changed.emit();
+		const game = this;
+		function loop(){
+			game.main_loop();
+			requestAnimationFrame(loop);
+		}
+		loop()
+	}
+	main_loop() {
+
+		this.player_controller.states.speed = 0;
+		//NOTE: the speed mod is really the controller.states.speed if moving.
+		let speed_mod = Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.SHIFT) ? 2 : 1
+		if (this.debug_mode) { speed_mod *= 2.0 }
+		if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.FORWARD)) {
+
+			Game_Utils.get_forward_direction(this.player.physics_body, this.player_controller.direction);
+			this.player_controller.states.speed = speed_mod;
+		}//need to redesign it. else if because it acts really odd when both are if. probably because of how direction is handled
+		else if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.BACK)) {
+			Game_Utils.get_forward_direction(this.player.physics_body, this.player_controller.direction);
+			this.player_controller.direction.scale(-1, this.player_controller.direction);
+			this.player_controller.states.speed = speed_mod;
+		}
+
+		if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.LEFT)) { this.player.rotation.y += 0.05; }
+		if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.RIGHT)) { this.player.rotation.y -= 0.05; }
+
+		if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.UP)) {
+			if (this.debug_mode) {
+				this.player_controller.direction.y += 1.0;
+				this.player_controller.states.speed = speed_mod;
+			}
+			this.player_controller.trigger_action(this.player_controller.ACTIONS.JUMP)
+			//player.jump();
+		}
+		else if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.DOWN) && this.debug_mode) {
+			this.player_controller.direction.y -= 1.0;
+			this.player_controller.states.speed = speed_mod;
+		}
+
+		this.update(performance.now());
+
+		if (this.resize) {
+			const width = canvas_body.clientWidth;
+			const height = canvas_body.clientHeight;
+			console.log('resizing', width, height);
+			camera.aspect = width / height;
+			camera.updateProjectionMatrix()
+			this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2.0));
+			this.renderer.setSize(width, height);
+			this.resize = false;
+		}
+
+	}
+
 
 	constructor(
 		renderer = new WebGLRenderer({ canvas, antialias: true, logarithmicDepthBuffer: true }),
@@ -150,36 +236,7 @@ export class Maze_Game extends Game {
 			touch_start_x: 0.0,
 			touch_start_y: 0.0
 		};
-		this.level.on_ready.connect(() => {
-			let player_x = 0.0; let player_y = 0.0; let player_z = 0.0;
-			if (this.level.config.objects && this.level.config.objects.player_start) {
-				const spawn = this.level.config.objects.player_start
-				if (spawn.cell_position) {
-					player_x = Number(spawn.cell_position.x) * this.level.cell_size.x;
-					player_y = Number(spawn.cell_position.y) * this.level.cell_size.y;
-					player_z = Number(spawn.cell_position.z) * this.level.cell_size.z;
-				}
-				if (spawn.offset_position) {
-					player_x += Number(spawn.offset_position.x);
-					player_y += Number(spawn.offset_position.y);
-					player_z += Number(spawn.offset_position.z);
-				}
-			}
-			player.set_position(player_x, player_y, player_z);
-			console.log(player.position)
-			console.log(player.physics_body.position)
-			if (!this.game_started) {
-				//not when traveling between level, may need to store exit data. this data is info attach to the exit as well as player state when interacted
-				//which will be used to figure the next level spawn else it will use the default spawn point
-
-				startGame(this);
-				this.game_started = 1; //using int so that the started state can change (for testing. -1 is reloading atm)
-				console.log('mew game loaded', this.player.position, this.player.physics_body.position);
-			}
-			this.is_loading = false;
-			this.on_state_changed.emit();
-
-		})
+		this.level.signal_ready.connect(() => this.on_ready())
 		//this.level.level_image.on_ready = () => {
 		//	this.level.build()
 		//	startGame(this);
@@ -198,99 +255,3 @@ export class Maze_Game extends Game {
 	}
 }
 
-
-//TODO: try to use a physics library, custom collsion seem to broke. walls will be cubes that hopefully wont cost much. not sure what broke in the old collsion system
-
-//TODO: Seems js event listerners are generated while moving. should check if events are created related to player or collsion still
-//it is clean up over time and might be created by a diffrent systems so it might not be an issue.
-function startGame(maze_game) {
-	maze_game.on_state_changed.emit();
-	//main ref
-	const level = maze_game.level;
-	const player = maze_game.player;
-	const camera = maze_game.camera;
-	const player_controller = maze_game.player_controller;
-
-
-	//console.log('webworker test start')
-	//const worker = new Worker('generic_webworker.js');
-	//worker.onmessage = (event) => {
-	//	console.log('webworker message received: ', event)
-	//}
-	//worker.postMessage({seed: 12345, chunkSize: 64 });
-	//console.log('webworker sent message')
-
-	//box test
-	//const box = level.get_cell_bounds();
-	//level.add(new Box3Helper(box, 0x008000)); // green color
-
-	//reuable ref base object
-	const collsion_data = new Collsion_Data();
-
-	function loop() {
-		requestAnimationFrame(loop);
-
-		if (maze_game.debug_mode) {
-			camera.getWorldDirection(collsion_data.direction);
-		}
-		else {
-			player.getWorldDirection(collsion_data.direction);
-			collsion_data.direction.negate() //camera seem to be incorrectly possition by 180 deg (y?)
-		}
-		collsion_data.from.copy(player.position)
-		collsion_data.to.copy(player.position)
-		collsion_data.velocity.set(0, 0, 0);
-
-		player_controller.states.speed = 0;
-		//NOTE: the speed mod is really the controller.states.speed if moving.
-		let speed_mod = Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.SHIFT) ? 2 : 1
-		if (maze_game.debug_mode) { speed_mod *= 2.0 }
-		if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.FORWARD)) {
-
-			Game_Utils.get_forward_direction(player.physics_body, player_controller.direction);
-			player_controller.states.speed = speed_mod;
-		}//need to redesign it. else if because it acts really odd when both are if. probably because of how direction is handled
-		else if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.BACK)) {
-			Game_Utils.get_forward_direction(player.physics_body, player_controller.direction);
-			player_controller.direction.scale(-1, player_controller.direction);
-			player_controller.states.speed = speed_mod;
-		}
-
-		if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.LEFT)) { player.rotation.y += 0.05; }
-		if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.RIGHT)) { player.rotation.y -= 0.05; }
-
-		if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.UP)) {
-			if (maze_game.debug_mode) {
-				player_controller.direction.y += 1.0;
-				player_controller.states.speed = speed_mod;
-			}
-			player_controller.trigger_action(player_controller.ACTIONS.JUMP)
-			//player.jump();
-		}
-		else if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.DOWN) && maze_game.debug_mode) {
-			player_controller.direction.y -= 1.0;
-			player_controller.states.speed = speed_mod;
-		}
-
-		maze_game.update(performance.now());
-
-		if (maze_game.resize) {
-			const width = canvas_body.clientWidth;
-			const height = canvas_body.clientHeight;
-			console.log('resizing', width, height);
-			camera.aspect = width / height;
-			camera.updateProjectionMatrix()
-			maze_game.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2.0));
-			maze_game.renderer.setSize(width, height);
-			maze_game.resize = false;
-		}
-
-
-		//level.get_cell_bounds(level.get_cell_position(player.position), box);
-		//TODO: try to move this to the update
-		//level.renderer.render(level, camera);
-
-	}
-
-	loop();
-}

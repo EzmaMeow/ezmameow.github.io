@@ -106,6 +106,6 @@ export class Player_Character extends Physics_Object {
         this.add(this.light);
 
         Audio_Manager.add_sound('player_footsteps',Footsteps);
-        this.movement_component.on_jump.connect(()=>this.jump());
+        this.movement_component.signal_jump.connect(()=>this.jump());
     }
 }

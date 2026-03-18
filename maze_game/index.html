@@ -75,7 +75,7 @@
     function event_router(element, event_type, handler, key) {
       element.addEventListener("change", (event) => {
         let new_value = event.target.value;
-        handler.on_change.emit(key, new_value);
+        handler.signal_change.emit(key, new_value);
       });
     }
 
@@ -154,7 +154,7 @@
 
     //this may be moved to game, but may stay for things unquie to this page
     //that the game may not need to worry about
-    maze_game.settings.on_change.connect((key, new_value) => {
+    maze_game.settings.signal_change.connect((key, new_value) => {
       const property = key.split('.').pop();
       if (key.startsWith("camera.") && (property || property != 'camera')) {
         maze_game.camera[property] = convert_to_same_type(maze_game.camera[property], new_value);
@@ -174,7 +174,7 @@
     event_router(document.getElementById('light_decay'), "change", maze_game.settings, 'light.decay');
     //TODO CONNECT LIGHT AND UPDATE
 
-    maze_game.on_state_changed.connect(()=>{
+    maze_game.signal_state_changed.connect(()=>{
       //is loading is not being set yet. so it should alway be false (but this signal will be called when everything is loaded)
       if (maze_game.is_loading){
         document.getElementById('loading_overlay').style.display = 'block';

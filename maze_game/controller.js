@@ -15,10 +15,10 @@ export class Controller{
     }; 
     get states() {return this.#states}
     #direction = new Vec3(); get direction(){return this.#direction}
-    #on_action = new Signal; get on_action(){return this.#on_action}
+    #signal_action = new Signal; get signal_action(){return this.#signal_action}
     //generic action to simplify conntions. if there are to be many actions, 
     //then they may need there own signals
     trigger_action(id,data){
-        this.on_action.emit(id,data);
+        this.signal_action.emit(id,data);
     }
 }
