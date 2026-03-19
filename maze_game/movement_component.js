@@ -2,6 +2,7 @@ import { Vec3, Ray, Quaternion, AABB } from "https://esm.sh/cannon-es";
 import { Controller } from './controller.js'
 import { VEC3, get_forward_direction } from './game_utility.js'
 import { Signal } from './game_core.js'
+import { rotateQuaternion } from './lib/vector_math.js'
 
 export class Movement_Component {
     //movement state is for additional state that can not be infered by velocity
@@ -56,6 +57,10 @@ export class Movement_Component {
     get_speed() {
         return this.#max_speed * this.controller.states.speed * this.speed_mod * (this.is_on_ground() ? 1.0 : 0.25);//too much speed in the air causes odd long grabbling hops. 
         // the hops work fine for the character idea, but the distance travel may be a pain to work with. 0.25 reduction seem to make it manageable
+    }
+    //rotate on the y axis by default, but can override if nessary
+    rotate(angle = -0.01, x = 0, y = 1, z = 0) {
+        rotateQuaternion(this.body.quaternion, x, y, z, angle)
     }
     is_on_ground() {
         //on_ground is set when there is a ground colsion, my be better to call it jumpped. the other 

@@ -10,6 +10,7 @@ import { Resource_Manager } from './resource_manager.js'
 import { Input_Manager } from './input_manager.js'
 import { Player_Character } from './player_character.js'
 import { Controller } from './controller.js'
+import { getDirectionFromQuaternion } from './lib/vector_math.js'
 
 const canvas = document.getElementById("game");
 const canvas_body = document.getElementById("canvas_body");
@@ -81,16 +82,22 @@ export class Maze_Game extends Game {
 		}
 	}
 	on_mouse_down(event) {
+		//using request pointer lock now so enable mouse wont be nessary
+		if (event.target === canvas) {
+			document.body.requestPointerLock();
+		}
 		if (event.button === 1) {
 			this.input_state.enable_mouse = true;
 		}
 	}
 	on_mouse_move(event) {
-		if (this.input_state.enable_mouse) {
+
+		if (document.pointerLockElement === document.body) {
 			const movement_x = event.movementX || event.mozMovementX || event.webkitMovementX || 0.0;
 			const movement_y = event.movementY || event.mozMovementY || event.webkitMovementY || 0.0;
-			//this.player.physics_body.angularVelocity.set(0, movement_x * this.input_state.touchSensitivity, 0);
-			this.player.rotation.y -= movement_x * this.input_state.mouseSensitivity;
+			//note: need to rotate the body or make this update the body
+			this.player.movement_component.rotate(-movement_x * this.input_state.mouseSensitivity)
+			//this.player.rotation.y -= movement_x * this.input_state.mouseSensitivity;
 			if ((this.camera.rotation.x < 1.0 && movement_y < 0) || (this.camera.rotation.x > -1.0 && movement_y > 0)) {
 				this.camera.rotation.x -= movement_y * this.input_state.mouseSensitivity;
 			}
@@ -105,7 +112,8 @@ export class Maze_Game extends Game {
 			this.input_state.touch_start_x = event.touches[0].clientX;
 			this.input_state.touch_start_y = event.touches[0].clientY;
 			//this.player.physics_body.angularVelocity.set(0, movement_x * this.input_state.touchSensitivity, 0);
-			this.player.rotation.y -= movement_x * this.input_state.touchSensitivity;
+			this.player.movement_component.rotate(-movement_x * this.input_state.touchSensitivity)
+			//this.player.rotation.y -= movement_x * this.input_state.touchSensitivity;
 			if ((this.camera.rotation.x < 1.0 && movement_y < 0) || (this.camera.rotation.x > -1.0 && movement_y > 0)) {
 				this.camera.rotation.x -= movement_y * this.input_state.touchSensitivity;
 			}
@@ -166,18 +174,19 @@ export class Maze_Game extends Game {
 		let speed_mod = Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.SHIFT) ? 2 : 1
 		if (this.debug_mode) { speed_mod *= 2.0 }
 		if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.FORWARD)) {
-
-			Game_Utils.get_forward_direction(this.player.physics_body, this.player_controller.direction);
+			getDirectionFromQuaternion(this.player.physics_body.quaternion, this.player_controller.direction)
+			//Game_Utils.get_forward_direction(this.player.physics_body, this.player_controller.direction);
 			this.player_controller.states.speed = speed_mod;
 		}//need to redesign it. else if because it acts really odd when both are if. probably because of how direction is handled
 		else if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.BACK)) {
-			Game_Utils.get_forward_direction(this.player.physics_body, this.player_controller.direction);
+			getDirectionFromQuaternion(this.player.physics_body.quaternion, this.player_controller.direction)
+			//Game_Utils.get_forward_direction(this.player.physics_body, this.player_controller.direction);
 			this.player_controller.direction.scale(-1, this.player_controller.direction);
 			this.player_controller.states.speed = speed_mod;
 		}
 
-		if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.LEFT)) { this.player.rotation.y += 0.05; }
-		if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.RIGHT)) { this.player.rotation.y -= 0.05; }
+		if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.LEFT)) { this.player.movement_component.rotate(0.05) }
+		if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.RIGHT)) { this.player.movement_component.rotate(-0.05); }
 
 		if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.UP)) {
 			if (this.debug_mode) {

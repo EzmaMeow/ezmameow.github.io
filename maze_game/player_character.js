@@ -27,7 +27,8 @@ export class Player_Character extends Physics_Object {
         //this.quaternion.copy(this.body.quaternion)
         //we may use the object rotations and such since it is easier to modify
         //but may need to be converted back and done the harder way if we want forces to influances(this project dose not expect that)
-        this.physics_body.quaternion.copy(this.quaternion)
+        //this.physics_body.quaternion.copy(this.quaternion)
+        this.quaternion.copy(this.physics_body.quaternion)
         if (this.movement_component.movement_state & Movement_Component.MOVEMENT_STATE.GROUNDED && this.movement_component.movement_state & Movement_Component.MOVEMENT_STATE.MOVING){
             this.play_footsteps(this.movement_component.get_speed() > 5 ? 0.25: 0.5); //checking max speed for now to reduce loop cost for now
         }
@@ -38,6 +39,7 @@ export class Player_Character extends Physics_Object {
         this.movement_component.world = world;
     }
     set_position(x=0.0,y=0.0,z=0.0){
+        //TODO: may also want to let controller also handle this case
         this.physics_body.position.set(
             x + this.center_position.x,
             y + this.center_position.y,
@@ -47,6 +49,8 @@ export class Player_Character extends Physics_Object {
 
     }
     jump() {
+        //TODO: it seems rotation is a bit off. need to see how input rotates character to make sure the character is rotating at least when left/right is presses
+        //mouse look dose not need to be that strict though
         this.play_footsteps();
     }
     //this is a test untill I work on handling the sound better (or modify the footsteps to be flag on and off and loop while on)
