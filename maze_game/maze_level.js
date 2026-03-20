@@ -1,4 +1,4 @@
-import { TextureLoader, Vector3, Box3, PlaneGeometry, Mesh, MeshStandardMaterial, FileLoader } from 'three';
+import { TextureLoader, Vector3, Box3, PlaneGeometry, Mesh, MeshStandardMaterial, FileLoader, ArrowHelper } from 'three';
 import * as BufferGeometryUtils from "three/addons/utils/BufferGeometryUtils.js";
 import * as Game_Utils from './game_utility.js'
 import * as CANNON from "https://esm.sh/cannon-es";
@@ -14,6 +14,17 @@ export class Maze_Level extends Level {
     static get FLAGS() { return this.#FLAGS };
     static #DIRECTIONS = { NORTH: 0, EAST: 1, SOUTH: 2, WEST: 3 };
     static get DIRECTIONS() { return this.#DIRECTIONS };
+    static #PATHING = {
+        NONE: 0, OPEN: 1 << 0,
+        NORTH: 1 << 1, EAST: 1 << 2, SOUTH: 1 << 3, WEST: 1 << 4, NORTH_EAST: 1 << 5, SOUTH_EAST: 1 << 6, SOUTH_WEST: 1 << 7, NORTH_WEST: 1 << 8,
+        UP: 1 << 9, UP_NORTH: 1 << 10, UP_EAST: 1 << 11, UP_SOUTH: 1 << 12, UP_WEST: 1 << 13,
+        DOWN: 1 << 14, DOWN_NORTH: 1 << 15, DOWN_EAST: 1 << 16, DOWN_SOUTH: 1 << 17, DOWN_WEST: 1 << 18,
+    };
+    static get PATHING() { return this.#PATHING };
+    static #forward_direction = [this.PATHING.NORTH, this.PATHING.EAST, this.PATHING.SOUTH, this.PATHING.WEST]; static get forward_direction() { return this.#forward_direction }
+    static #upward_direction = [this.PATHING.UP_NORTH, this.PATHING.UP_EAST, this.PATHING.UP_SOUTH, this.PATHING.UP_WEST]; static get upward_direction() { return this.#upward_direction }
+    static #downward_direction = [this.PATHING.DOWN_NORTH, this.PATHING.DOWN_EAST, this.PATHING.DOWN_SOUTH, this.PATHING.DOWN_WEST]; static get downward_direction() { return this.#downward_direction }
+    static #back_direction = [this.PATHING.SOUTH, this.PATHING.WEST, this.PATHING.NORTH, this.PATHING.EAST]; static get back_direction() { return this.#back_direction }
 
     #file_loader = new FileLoader();
 
@@ -47,6 +58,8 @@ export class Maze_Level extends Level {
     //may be able to set length with .length = x and then call fill to reuse it
     //also ~26 bitflags and 32 is the ideal max for directions with slope (not edge cases since that would need 8 more flags)
     //may use Int32Array. also image data probably should use a similar type too(if it not nativly returning it).
+    //TODO: need to increase the size by 3-4 times and fetch with hight as an offset or at least
+    //make sure there a group for each height
     #maze_nav; get maze_nav() { return this.#maze_nav; }
     //TODO: See if this is needed
     static_objects = {};
@@ -113,7 +126,9 @@ export class Maze_Level extends Level {
             'index': color_value,
             'id': 0,
             'variation': 0,
-            'flags': 0
+            'flags': 0,
+            'pixel_info': pixel_info,
+            'height': height
         }
         if (color_value < 0) {
             cell_type.type |= Maze_Level.FLAGS.BOUNDS;
@@ -189,6 +204,14 @@ export class Maze_Level extends Level {
         }
         return bounds;
     }
+    arrows = new Set()
+    add_arrow(arrow) {
+        if (arrow) {
+            this.arrows.add(arrow)
+            this.add(arrow)
+        }
+    }
+
     //segments will have a mesh and a body (and maybe others). note: walls and floor would be two diffrent segments
     //but they should be added in the same order so lookup should not be too hard (may be an issue of also includeing meshes as seprate segments)
     create_maze_segment(geometry, material, body = undefined) {
@@ -236,34 +259,49 @@ export class Maze_Level extends Level {
     //this might make floor/ceil a little redundent, but also allow each case to be handle diffrently
     //or maybe not since their cases are a bit more picky
     create_wall(pixel_info, cell_type, pixels_data, wall_geometries, wall_body, height) {
-
+        //NOTE: maybe nav map should not check for floor. can check if down is open with the flags
+        //so just flagging what exit is opens should be enough
         const north_cell_type = this.get_cell_type(pixels_data.north, height);
         if (this.is_wall(north_cell_type.type) || this.is_bounds(north_cell_type.type)) {
             const face = new PlaneGeometry(this.#cell_size.z, this.#cell_size.y);
             face.translate(pixel_info.x * this.#cell_size.x, this.#cell_size.y * height, pixel_info.y * this.#cell_size.z - this.#cell_size.x / 2.0);
             wall_geometries.push(face);
-            this.maze_nav[pixel_info.id] |= 1 << 1;
+        }
+        else {
+            this.maze_nav[pixel_info.id + this.nav_layer_length * height] |= Maze_Level.PATHING.NORTH;
+            this.add_arrow(new ArrowHelper(new Vector3(0, 0, -1), new Vector3(pixel_info.x * this.#cell_size.x, this.#cell_size.y * height, pixel_info.y * this.#cell_size.z), 1.5, 0x00ff00, 0.3, 0.15));
         }
         const east_cell_type = this.get_cell_type(pixels_data.east, height);
         if (this.is_wall(east_cell_type.type) || this.is_bounds(east_cell_type.type)) {
             const face = new PlaneGeometry(this.#cell_size.x, this.#cell_size.y).rotateY(-Math.PI / 2);
             face.translate(pixel_info.x * this.#cell_size.x + this.#cell_size.z / 2.0, this.#cell_size.y * height, pixel_info.y * this.#cell_size.z);
             wall_geometries.push(face);
-            this.maze_nav[pixel_info.id] |= 1 << 2;
+
+        }
+        else {
+            this.maze_nav[pixel_info.id + this.nav_layer_length * height] |= Maze_Level.PATHING.EAST;
+            this.add_arrow(new ArrowHelper(new Vector3(1, 0, 0), new Vector3(pixel_info.x * this.#cell_size.x, this.#cell_size.y * height, pixel_info.y * this.#cell_size.z), 1.5, 0x00ff00, 0.3, 0.15));
         }
         const south_cell_type = this.get_cell_type(pixels_data.south, height);
         if (this.is_wall(south_cell_type.type) || this.is_bounds(south_cell_type.type)) {
             const face = new PlaneGeometry(this.#cell_size.z, this.#cell_size.y).rotateY(Math.PI);
             face.translate(pixel_info.x * this.#cell_size.x, this.#cell_size.y * height, pixel_info.y * this.#cell_size.z + this.#cell_size.x / 2.0);
             wall_geometries.push(face);
-            this.maze_nav[pixel_info.id] |= 1 << 3;
+
+        }
+        else {
+            this.maze_nav[pixel_info.id + this.nav_layer_length * height] |= Maze_Level.PATHING.SOUTH;
+            this.add_arrow(new ArrowHelper(new Vector3(0, 0, 1), new Vector3(pixel_info.x * this.#cell_size.x, this.#cell_size.y * height, pixel_info.y * this.#cell_size.z), 1.5, 0x00ff00, 0.3, 0.15));
         }
         const west_cell_type = this.get_cell_type(pixels_data.west, height);
         if (this.is_wall(west_cell_type.type) || this.is_bounds(west_cell_type.type)) {
             const face = new PlaneGeometry(this.#cell_size.x, this.#cell_size.y).rotateY(Math.PI / 2);
             face.translate(pixel_info.x * this.#cell_size.x - this.#cell_size.z / 2.0, this.#cell_size.y * height, pixel_info.y * this.#cell_size.z);
             wall_geometries.push(face);
-            this.maze_nav[pixel_info.id] |= 1 << 4;
+        }
+        else {
+            this.maze_nav[pixel_info.id + this.nav_layer_length * height] |= Maze_Level.PATHING.WEST;
+            this.add_arrow(new ArrowHelper(new Vector3(-1, 0, 0), new Vector3(pixel_info.x * this.#cell_size.x, this.#cell_size.y * height, pixel_info.y * this.#cell_size.z), 1.5, 0x00ff00, 0.3, 0.15));
         }
     }
     //NOTE: MAY NEED TO RESERVER 4 FLAGS FOR this.maze_nav[pixel_info.id] to solve egde cases
@@ -276,7 +314,11 @@ export class Maze_Level extends Level {
             const face = new PlaneGeometry(this.#cell_size.x, this.#cell_size.z).rotateX(-Math.PI / 2);
             face.translate(pixel_info.x * this.#cell_size.x, this.#cell_size.y * height - this.#cell_size.y / 2.0, pixel_info.y * this.#cell_size.z);
             floor_geometries.push(face);
-            this.maze_nav[pixel_info.id] |= 1 << 9;
+
+        }
+        else {
+            this.maze_nav[pixel_info.id + this.nav_layer_length * height] |= Maze_Level.PATHING.DOWN;
+            this.add_arrow(new ArrowHelper(new Vector3(0, -1, 0), new Vector3(pixel_info.x * this.#cell_size.x, this.#cell_size.y * height, pixel_info.y * this.#cell_size.z), 1.5, 0x00ff00, 0.3, 0.15));
         }
         //if (this.is_wall(pixel_info, i + 1)) {
         if (this.has_ceil(cell_type.type) || this.is_wall(up_cell_type.type) || this.is_bounds(up_cell_type.type) || this.has_floor(up_cell_type.type)) {
@@ -290,7 +332,10 @@ export class Maze_Level extends Level {
                     new CANNON.Vec3(pixel_info.x * this.#cell_size.x, this.#cell_size.y * height + this.#cell_size.y, pixel_info.y * this.#cell_size.z)
                 );
             }
-            this.maze_nav[pixel_info.id] |= 1 << 10;
+        }
+        else {
+            this.maze_nav[pixel_info.id + this.nav_layer_length * height] |= Maze_Level.PATHING.UP;
+            this.add_arrow(new ArrowHelper(new Vector3(0, 1, 0), new Vector3(pixel_info.x * this.#cell_size.x, this.#cell_size.y * height, pixel_info.y * this.#cell_size.z), 1.5, 0x00ff00, 0.3, 0.15));
         }
 
         //slopes. will treat them as floor(up) or ceil(down) for geo
@@ -320,8 +365,26 @@ export class Maze_Level extends Level {
             //just need to correctly convert variantion into an direction
             //belive 0 is north and 1 is east (or clockwise)
             const var_direction = ['north', 'east', 'south', 'west'];
-            const var_neg_direction = [1 << 3, 1 << 4, 1 << 1, 1 << 2]; //probably could offset with math
+            //const forward_direction = [this.PATHING.NORTH,this.PATHING.EAST,this.PATHING.SOUTH, this.PATHING.WEST];
+            //const upward_direction = [this.PATHING.UP_NORTH,this.PATHING.UP_EAST,this.PATHING.UP_SOUTH,this.PATHING.UP_WEST];
+            //const downward_direction = [this.PATHING.DOWN_NORTH,this.PATHING.DOWN_EAST,this.PATHING.DOWN_SOUTH,this.PATHING.DOWN_WEST];
+            //const back_direction = [this.PATHING.SOUTH, this.PATHING.WEST, this.PATHING.NORTH, this.PATHING.EAST]; //probably could offset with math
+            const arrow_x = (v) => {
+                if (v == 1) { return 1 }
+                if (v == 3) { return -1 }
+                if (v == 5) { return -1 }
+                if (v == 7) { return 1 }
+                return 0
+            }
+            const arrow_z = (v) => {
+                if (v == 0) { return -1 }
+                if (v == 2) { return 1 }
+                if (v == 4) { return 1 }
+                if (v == 6) { return -1 }
+                return 0
+            }
             const up_forward_cell_type = this.get_cell_type(pixels_data[var_direction[cell_type.variation]], height + 1);
+            const forward_cell_type = this.get_cell_type(pixels_data[var_direction[cell_type.variation]], height);
             if (!this.is_wall(up_cell_type.type) && !this.is_bounds(up_cell_type.type) && !this.has_floor(up_cell_type.type) && !this.has_ceil(cell_type.type)) {
                 //console.log('up is open and floorless')
                 if (!this.is_wall(up_forward_cell_type.type) && !this.is_bounds(up_forward_cell_type.type) && this.has_floor(up_forward_cell_type.type)) {
@@ -329,14 +392,30 @@ export class Maze_Level extends Level {
                     if (Maze_Level.FLAGS.RAMP & up_forward_cell_type.type && up_forward_cell_type.variation !== cell_type.variation) {
                         //console.log('but has a ramp not in the same direction')
                     }
-                    else{
+                    else { //NOTE: there a chance nav is generated a in the upper boundires so need to figure out a check (less than 4 or less than 5 or from a declare var)
                         //set self as vaild
-                        this.maze_nav[cell_type.id] |= 1 << (11 + cell_type.variation);
+                        this.maze_nav[cell_type.id + this.nav_layer_length * height] |= Maze_Level.upward_direction[cell_type.variation];
                         //set up as down ramp
-                        this.maze_nav[up_cell_type.id] |= 1 << (15 + cell_type.variation);
+                        this.maze_nav[up_cell_type.id + this.nav_layer_length * (height + 1)] |= Maze_Level.downward_direction[cell_type.variation];
                         //tell upper that it can move in the direction of the ramp
-                        this.maze_nav[up_forward_cell_type.id] |= 1 << (var_neg_direction[cell_type.variation]);
+                        this.maze_nav[up_forward_cell_type.id + this.nav_layer_length * (height + 1)] |= Maze_Level.back_direction[cell_type.variation];
+
+
+                        this.add_arrow(new ArrowHelper(new Vector3(arrow_x(cell_type.variation), 1, arrow_z(cell_type.variation)).normalize(), new Vector3(pixel_info.x * this.#cell_size.x, this.#cell_size.y * height + this.#cell_size.y / 2.0, pixel_info.y * this.#cell_size.z), 1.5, 0xe0f2ff, 0.3, 0.15));
+                        this.add_arrow(new ArrowHelper(new Vector3(arrow_x(cell_type.variation + 4), -1, arrow_z(cell_type.variation + 4)).normalize(), new Vector3(up_cell_type.pixel_info.x * this.#cell_size.x, this.#cell_size.y * (height + 1), up_cell_type.pixel_info.y * this.#cell_size.z), 1.5, 0xe0f2ff, 0.3, 0.15));
+                        this.add_arrow(new ArrowHelper(new Vector3(arrow_x(cell_type.variation + 4), 0, arrow_z(cell_type.variation + 4)).normalize(), new Vector3(up_forward_cell_type.pixel_info.x * this.#cell_size.x, this.#cell_size.y * height, up_forward_cell_type.pixel_info.y * this.#cell_size.z), 1.5, 0xe0f2ff, 0.3, 0.15));
+
                     }
+                    //NOTE: TODO: also need to make sure the forward_cell neg direction is blocked as well as the cell forward direction is block
+                    //since the ramp prevent traveing on the same level if connected above
+                    //NOTE: seems the blocking happening a little more forward than nessary or at least from how the arrows are rendering
+                    //UPDATE: the offset probably correct. the area under the slop is not navigatble or well it could, but the multi layer would be a pain
+                    //and why it should be a wedge or blocking
+                    this.maze_nav[cell_type.id + this.nav_layer_length * height] &= ~Maze_Level.forward_direction[cell_type.variation];
+                    this.maze_nav[forward_cell_type.id + this.nav_layer_length * height] &= ~Maze_Level.back_direction[cell_type.variation];
+                    this.add_arrow(new ArrowHelper(new Vector3(arrow_x(cell_type.variation), 0, arrow_z(cell_type.variation)), new Vector3(pixel_info.x * this.#cell_size.x, this.#cell_size.y * height, pixel_info.y * this.#cell_size.z), 1.5, 0xff0000, 0.3, 0.15));
+                    this.add_arrow(new ArrowHelper(new Vector3(arrow_x(cell_type.variation + 4), 0, arrow_z(cell_type.variation + 4)), new Vector3(forward_cell_type.pixel_info.x * this.#cell_size.x, this.#cell_size.y * height, forward_cell_type.pixel_info.y * this.#cell_size.z), 1.5, 0xff0000, 0.3, 0.15));
+                    //permissions &= ~FLAG_WRITE
 
                 }
             }
@@ -350,7 +429,15 @@ export class Maze_Level extends Level {
         let segment_id = 0;
         const size = 64 * 4;
         this.clear_maze_segments();
-        this.#maze_nav = new Int32Array(Math.floor(this.level_image.data.length / 4));
+        for (const arrow of this.arrows){
+            this.remove(arrow)
+        }
+        this.arrows.clear()
+        //nav_layer_length * hight should allow each height to have its own layer up to 4
+        //but I am not sure if apha will be used
+        this.nav_layer_length = this.level_image.data.length / 4;
+        //only using some of the length since alpha is not being used as a height layer
+        this.#maze_nav = new Int32Array(Math.floor(this.nav_layer_length * 3));
         const step = () => {
 
             const wall_geometries = [];
@@ -390,7 +477,7 @@ export class Maze_Level extends Level {
                         )
                     }
                     else {
-                        this.maze_nav[pixel_info.id] |= 1 << 0; // first bit state there is space, but only useful for teleportation
+                        this.maze_nav[pixel_info.id] |= Maze_Level.PATHING.OPEN; // first bit state there is space, but only useful for teleportation
                         //probably can add cell type
                         this.create_wall(pixel_info, cell_type, pixels_data, wall_geometries, wall_body, i);
                         this.create_floor(pixel_info, cell_type, pixels_data, floor_geometries, floor_body, i)
@@ -424,6 +511,7 @@ export class Maze_Level extends Level {
                 //but there should be nodes in the config to represent enterances(spawns) and exits
                 //probably should be an object of type, cell point, local position(or offset), and other metadata
                 //maybe called entities or objects
+                console.log(this.maze_nav)
                 this.ready();
                 this.signal_ready.emit();
             }
@@ -484,8 +572,8 @@ export class Maze_Level extends Level {
         this.east_bounds.position.x = this.level_image.image.height * this.#cell_size.x - this.#cell_size.x / 2.0
 
     }
-    ready(){
-        
+    ready() {
+
     }
     build() {
         this.create_bounds();
