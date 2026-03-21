@@ -34,15 +34,20 @@ export class NavigationGrid3D {
         if (type < 0 || type >= this.#DIR_OFFSET.length) {
             throw new Error(`Invalid type: ${type}. Valid types: ${this.CONN_DIR_TYPE.join(", ")}`);
         }
-        if (Math.abs(direction) >= this.DIRECTION.length) {
-            throw new Error(`Invalid type: ${direction}. Valid types as numbers: ${this.DIRECTION} as well as the negative to invert.`);
-        }
+        //if (Math.abs(direction) >= this.DIRECTION.length) {
+        //    throw new Error(`Invalid type: ${direction}. Valid types as numbers: ${this.DIRECTION} as well as the negative to invert.`);
+        //} //NOTE: May not need this check since I think the direction will loop over
         if (direction === 0) {
             return 1 << type;
         }
-        let direction_id = (direction > 0 ? direction : -direction) - 1;
+        let direction_id = (direction > 0 ? (direction-1) : -(direction-1));
         if (direction < 0) {
             direction_id = (direction_id + 4) % 8;
+        }
+        else if (direction >= this.DIRECTION.length){
+            //this is to correct out of bounds directions ideally looping so one can offset with math without worry
+            //may not need negatives, just need to offset it by 8 (+1 if the pass direction dose not support 0 as none)
+            direction_id = direction_id % 8
         }
         return 1 << (this.#DIR_OFFSET[type] + direction_id)
     }
@@ -58,6 +63,24 @@ export class NavigationGrid3D {
         if (x < 0 || y < 0 || z < 0) { return -1 }
         if (x >= this.width || y >= this.height || z >= this.depth) { return -1 }
         return x + (y *this.width) + (z * this.width * this.height)
+    }
+    getCellCoords(index, targetVector = {x:0,y:0,z:0}){
+        targetVector.x = index % this.width;
+        targetVector.y = Math.floor(index / this.width) % this.height;
+        targetVector.z = Math.floor(index / (this.width * this.height));
+        return targetVector
+    }
+    getCellLocalPosition(index, targetVector = {x:0,y:0,z:0}){
+        targetVector.x = (index % this.width)*this.cellSize.x;
+        targetVector.y = (Math.floor(index / this.width) % this.height)*this.cellSize.y;
+        targetVector.z = (Math.floor(index / (this.width * this.height)))*this.cellSize.z;
+        return targetVector
+    }
+    getCellPosition(index, targetVector = {x:0,y:0,z:0}){
+        targetVector.x = (index % this.width)*this.cellSize.x + this.position.x;
+        targetVector.y = (Math.floor(index / this.width) % this.height)*this.cellSize.y+ this.position.y;
+        targetVector.z = (Math.floor(index / (this.width * this.height)))*this.cellSize.z+ this.position.z;
+        return targetVector
     }
     getCellConn(x, y, z) {
         const index = this.getCellIndex(x, y, z);
