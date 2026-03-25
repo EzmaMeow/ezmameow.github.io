@@ -1,4 +1,4 @@
-import { TextureLoader, Vector3, Box3, PlaneGeometry, Mesh, MeshStandardMaterial, FileLoader, ArrowHelper } from 'three';
+import { TextureLoader, Vector3, Box3, PlaneGeometry, Mesh, MeshStandardMaterial, FileLoader, ArrowHelper, Object3D } from 'three';
 import * as BufferGeometryUtils from "three/addons/utils/BufferGeometryUtils.js";
 import * as Game_Utils from './game_utility.js'
 import * as CANNON from "https://esm.sh/cannon-es";
@@ -13,19 +13,9 @@ export class Maze_Level extends Level {
     //may not need most of these static strings/enums, but would need to redesign things to work without them
     static #FLAGS = { FLOOR: 1 << 0, CEIL: 1 << 1, RAMP: 1 << 2, VARIATION: 1 << 3, MESH: 1 << 4, BLOCK: 1 << 5, BOUNDS: 1 << 6 };
     static get FLAGS() { return this.#FLAGS };
-    static #DIRECTIONS = { NORTH: 0, EAST: 1, SOUTH: 2, WEST: 3 };
+    //directions is for neigboring pixels/cells and may change to 8 dir in the future
+    static #DIRECTIONS = { NORTH: 0, EAST: 1, SOUTH: 2, WEST: 3, length: 4 }; //adding a length property, but need to be updated if the entries changes
     static get DIRECTIONS() { return this.#DIRECTIONS };
-    static #PATHING = {
-        NONE: 0, OPEN: 1 << 0,
-        NORTH: 1 << 1, EAST: 1 << 2, SOUTH: 1 << 3, WEST: 1 << 4, NORTH_EAST: 1 << 5, SOUTH_EAST: 1 << 6, SOUTH_WEST: 1 << 7, NORTH_WEST: 1 << 8,
-        UP: 1 << 9, UP_NORTH: 1 << 10, UP_EAST: 1 << 11, UP_SOUTH: 1 << 12, UP_WEST: 1 << 13,
-        DOWN: 1 << 14, DOWN_NORTH: 1 << 15, DOWN_EAST: 1 << 16, DOWN_SOUTH: 1 << 17, DOWN_WEST: 1 << 18,
-    };
-    static get PATHING() { return this.#PATHING };
-    static #forward_direction = [this.PATHING.NORTH, this.PATHING.EAST, this.PATHING.SOUTH, this.PATHING.WEST]; static get forward_direction() { return this.#forward_direction }
-    static #upward_direction = [this.PATHING.UP_NORTH, this.PATHING.UP_EAST, this.PATHING.UP_SOUTH, this.PATHING.UP_WEST]; static get upward_direction() { return this.#upward_direction }
-    static #downward_direction = [this.PATHING.DOWN_NORTH, this.PATHING.DOWN_EAST, this.PATHING.DOWN_SOUTH, this.PATHING.DOWN_WEST]; static get downward_direction() { return this.#downward_direction }
-    static #back_direction = [this.PATHING.SOUTH, this.PATHING.WEST, this.PATHING.NORTH, this.PATHING.EAST]; static get back_direction() { return this.#back_direction }
 
     #file_loader = new FileLoader();
 
@@ -53,35 +43,25 @@ export class Maze_Level extends Level {
     //rebuild the world and adjust all object to the new positions
     #cell_size = new Vector3(3.0, 3.0, 3.0); get cell_size() { return this.#cell_size; }
     #maze_segments = new Set(); get maze_segments() { return this.#maze_segments; }
-    //index is the pixel id and this is the static mapping without needing to parce pixel info
-    //aka cache state of the cell. 0 is a block cell and 1 or greater is an open cell. the number represent pathing states such as open exits
-    // new Array(size).fill(0) may use this when level image is ready 
-    //may be able to set length with .length = x and then call fill to reuse it
-    //also ~26 bitflags and 32 is the ideal max for directions with slope (not edge cases since that would need 8 more flags)
-    //may use Int32Array. also image data probably should use a similar type too(if it not nativly returning it).
-    //TODO: need to increase the size by 3-4 times and fetch with hight as an offset or at least
-    //make sure there a group for each height
-    #maze_nav; get maze_nav() { return this.#maze_nav; }
 
     #navigation_grid = new NavigationGrid3D; get navigation_grid() { return this.#navigation_grid; }
 
     //TODO: See if this is needed
-    static_objects = {};
+    //static_objects = {};
 
-    //may not be needed since mats are created after config. could call directly or use const strings
     get default_wall_mat() {
-        return this.resources.get_material('default_wall', new MeshStandardMaterial({ color: 0x6a7a8c, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 10 }));
+        return this.resources.get_material('default_wall');
     }
     get default_floor_mat() {
-        return this.resources.get_material('default_floor', new MeshStandardMaterial({ color: 0x7f7f7f, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 10 }));
+        return this.resources.get_material('default_floor');
     }
     get default_ceil_mat() {
-        return this.resources.get_material('default_ceil', new MeshStandardMaterial({ color: 0x6f7d6f, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 10 }));
+        return this.resources.get_material('default_ceil');
     }
 
     //TODO: See if this is still used since
     //maze segments hold body and mesh info
-    maze_mesh = null;
+    //maze_mesh = null;
 
     //these function that return clones are not really need and probably should
     //be redesigned or removed.
@@ -106,10 +86,10 @@ export class Maze_Level extends Level {
         const pixels_data = {};
         //NOTE: This is the direction they are facing. a wall blocking the east will generater a west facing wall if handle by the empty space west of the wall.
         //may be better to use an array/set so id do not need to be known and variance can be used as index (0:north, 1:east, 2:south, 3: west)
-        pixels_data['north'] = this.level_image.get_pixel_info(this.level_image.convert_coord_to_index(pixel_data.x, pixel_data.y - 1));
-        pixels_data['south'] = this.level_image.get_pixel_info(this.level_image.convert_coord_to_index(pixel_data.x, pixel_data.y + 1));
-        pixels_data['west'] = this.level_image.get_pixel_info(this.level_image.convert_coord_to_index(pixel_data.x - 1, pixel_data.y));
-        pixels_data['east'] = this.level_image.get_pixel_info(this.level_image.convert_coord_to_index(pixel_data.x + 1, pixel_data.y));
+        pixels_data[Maze_Level.DIRECTIONS.NORTH] = this.level_image.get_pixel_info(this.level_image.convert_coord_to_index(pixel_data.x, pixel_data.y - 1));
+        pixels_data[Maze_Level.DIRECTIONS.SOUTH] = this.level_image.get_pixel_info(this.level_image.convert_coord_to_index(pixel_data.x, pixel_data.y + 1));
+        pixels_data[Maze_Level.DIRECTIONS.WEST] = this.level_image.get_pixel_info(this.level_image.convert_coord_to_index(pixel_data.x - 1, pixel_data.y));
+        pixels_data[Maze_Level.DIRECTIONS.EAST] = this.level_image.get_pixel_info(this.level_image.convert_coord_to_index(pixel_data.x + 1, pixel_data.y));
         return pixels_data;
     }
     get_height_color(pixel_info, height = 0) {
@@ -121,6 +101,7 @@ export class Maze_Level extends Level {
         return -1
 
     }
+    //make an object that represent the info in the color value as well as ref of the pass parameters for easier acess
     get_cell_type(pixel_info, height = 0) {
         //blocks do not care about floors or ceils or mesh since it takes up the full space
         //also, for now, out of bounds (aka null) is consider blocking 
@@ -208,13 +189,6 @@ export class Maze_Level extends Level {
         }
         return bounds;
     }
-    arrows = new Set()
-    add_arrow(arrow) {
-        if (arrow) {
-            this.arrows.add(arrow)
-            this.add(arrow)
-        }
-    }
 
     //segments will have a mesh and a body (and maybe others). note: walls and floor would be two diffrent segments
     //but they should be added in the same order so lookup should not be too hard (may be an issue of also includeing meshes as seprate segments)
@@ -258,6 +232,79 @@ export class Maze_Level extends Level {
         }
         this.maze_segments.clear();
     }
+    //enable will make it visable. rebuild it will regenerate the arrows
+    update_nav_debug(enable = true, rebuild = false) {
+        if (!this.nav_debug) {
+            this.nav_debug = new Object3D();
+            this.add(this.nav_debug);
+            this.nav_debug.enable = enable;
+        }
+        if (rebuild) {
+            for (let i = this.nav_debug.children.length - 1; i >= 0; i--) {
+                const old_arrow = this.nav_debug.children[i];
+                if (old_arrow.line) {
+                    if (old_arrow.line.geometry) old_arrow.line.geometry.dispose();
+                    if (old_arrow.line.material) old_arrow.line.material.dispose();
+                }
+                if (old_arrow.cone) {
+                    if (old_arrow.cone.geometry) old_arrow.cone.geometry.dispose();
+                    if (old_arrow.cone.material) old_arrow.cone.material.dispose();
+                }
+                this.nav_debug.remove(old_arrow);
+            }
+            const FLAG_NAME = Object.fromEntries(
+                Object.entries(NavigationGrid3D.CONN_DIR).map(([name, value]) => [value, name])
+            );
+            const cell_dir = new Set();
+            const dir = { x: 0, y: 0, z: 0 }
+            const cell_position = new Vector3()
+            let arrow_color = 0xff0000
+            let direction_length = 0;
+            for (let cell_index = 0; cell_index < this.navigation_grid.cellConnections.length; cell_index++) {
+                //for (let bitmask of this.navigation_grid.cellConnections) {
+                let mask = this.navigation_grid.cellConnections[cell_index];
+                cell_dir.clear()
+                while (mask !== 0) {
+                    // Extract the lowest set bit
+                    const flag = mask & -mask;
+                    const flag_name = FLAG_NAME[flag];
+                    cell_dir.add(flag_name)
+                    if (flag_name.includes("UP")) { dir.y = 1 }
+                    else if (flag_name.includes("DOWN")) { dir.y = -1 }
+                    else { dir.y = 0 }
+                    if (flag_name.includes("NORTH")) { dir.z = -1 }
+                    else if (flag_name.includes("SOUTH")) { dir.z = 1 }
+                    else { dir.z = 0 }
+                    if (flag_name.includes("EAST")) { dir.x = 1 }
+                    else if (flag_name.includes("WEST")) { dir.x = -1 }
+                    else { dir.x = 0 }
+                    direction_length = Math.abs(dir.x) + Math.abs(dir.y) + Math.abs(dir.z)
+                    if (direction_length >= 2) {
+                        arrow_color = 0xe0f2ff;
+                    }
+                    else {
+                        arrow_color = 0x00ff00;
+                    }
+                    if (direction_length !== 0) {
+                        this.navigation_grid.getCellPosition(cell_index, cell_position)
+                        const arrow = new ArrowHelper(
+                            new Vector3(dir.x, dir.y, dir.z).normalize(),
+                            cell_position.clone().add(new Vector3(0, 1.5, 0)),
+                            1.5,
+                            arrow_color,
+                            0.3,
+                            0.15
+                        );
+                        this.nav_debug.add(arrow);
+                    }
+                    mask &= mask - 1;
+                }
+            }
+        }
+        //the extra flag is so that the level can remeber if something enable or disable nav_debug
+        this.nav_debug.enable = enable
+        this.nav_debug.visible = enable;
+    }
     //create the walls around an empty cell
     // might move floor and ceil logic here only for blocking cases
     //this might make floor/ceil a little redundent, but also allow each case to be handle diffrently
@@ -265,20 +312,18 @@ export class Maze_Level extends Level {
     create_wall(pixel_info, cell_type, pixels_data, wall_geometries, wall_body, height) {
         //NOTE: maybe nav map should not check for floor. can check if down is open with the flags
         //so just flagging what exit is opens should be enough
-        const north_cell_type = this.get_cell_type(pixels_data.north, height);
+        const north_cell_type = this.get_cell_type(pixels_data[Maze_Level.DIRECTIONS.NORTH], height);
         if (this.is_wall(north_cell_type.type) || this.is_bounds(north_cell_type.type)) {
             const face = new PlaneGeometry(this.#cell_size.z, this.#cell_size.y);
             face.translate(pixel_info.x * this.#cell_size.x, this.#cell_size.y * height, pixel_info.y * this.#cell_size.z - this.#cell_size.x / 2.0);
             wall_geometries.push(face);
         }
         else {
-            this.maze_nav[pixel_info.id + this.nav_layer_length * height] |= Maze_Level.PATHING.NORTH;
-            //this.add_arrow(new ArrowHelper(new Vector3(0, 0, -1), new Vector3(pixel_info.x * this.#cell_size.x, this.#cell_size.y * height, pixel_info.y * this.#cell_size.z), 1.5, 0x00ff00, 0.3, 0.15));
             if (!(Maze_Level.FLAGS.RAMP & north_cell_type.type || Maze_Level.FLAGS.RAMP & cell_type.type)) {
                 this.navigation_grid.setCellConnFlag(pixel_info.x, height, pixel_info.y, NavigationGrid3D.CONN_DIR.NORTH)
             }
         }
-        const east_cell_type = this.get_cell_type(pixels_data.east, height);
+        const east_cell_type = this.get_cell_type(pixels_data[Maze_Level.DIRECTIONS.EAST], height);
         if (this.is_wall(east_cell_type.type) || this.is_bounds(east_cell_type.type)) {
             const face = new PlaneGeometry(this.#cell_size.x, this.#cell_size.y).rotateY(-Math.PI / 2);
             face.translate(pixel_info.x * this.#cell_size.x + this.#cell_size.z / 2.0, this.#cell_size.y * height, pixel_info.y * this.#cell_size.z);
@@ -286,13 +331,11 @@ export class Maze_Level extends Level {
 
         }
         else {
-            this.maze_nav[pixel_info.id + this.nav_layer_length * height] |= Maze_Level.PATHING.EAST;
-            //this.add_arrow(new ArrowHelper(new Vector3(1, 0, 0), new Vector3(pixel_info.x * this.#cell_size.x, this.#cell_size.y * height, pixel_info.y * this.#cell_size.z), 1.5, 0x00ff00, 0.3, 0.15));
             if (!(Maze_Level.FLAGS.RAMP & east_cell_type.type || Maze_Level.FLAGS.RAMP & cell_type.type)) {
                 this.navigation_grid.setCellConnFlag(pixel_info.x, height, pixel_info.y, NavigationGrid3D.CONN_DIR.EAST)
             }
         }
-        const south_cell_type = this.get_cell_type(pixels_data.south, height);
+        const south_cell_type = this.get_cell_type(pixels_data[Maze_Level.DIRECTIONS.SOUTH], height);
         if (this.is_wall(south_cell_type.type) || this.is_bounds(south_cell_type.type)) {
             const face = new PlaneGeometry(this.#cell_size.z, this.#cell_size.y).rotateY(Math.PI);
             face.translate(pixel_info.x * this.#cell_size.x, this.#cell_size.y * height, pixel_info.y * this.#cell_size.z + this.#cell_size.x / 2.0);
@@ -300,21 +343,17 @@ export class Maze_Level extends Level {
 
         }
         else {
-            this.maze_nav[pixel_info.id + this.nav_layer_length * height] |= Maze_Level.PATHING.SOUTH;
-            //this.add_arrow(new ArrowHelper(new Vector3(0, 0, 1), new Vector3(pixel_info.x * this.#cell_size.x, this.#cell_size.y * height, pixel_info.y * this.#cell_size.z), 1.5, 0x00ff00, 0.3, 0.15));
             if (!(Maze_Level.FLAGS.RAMP & south_cell_type.type || Maze_Level.FLAGS.RAMP & cell_type.type)) {
                 this.navigation_grid.setCellConnFlag(pixel_info.x, height, pixel_info.y, NavigationGrid3D.CONN_DIR.SOUTH)
             }
         }
-        const west_cell_type = this.get_cell_type(pixels_data.west, height);
+        const west_cell_type = this.get_cell_type(pixels_data[Maze_Level.DIRECTIONS.WEST], height);
         if (this.is_wall(west_cell_type.type) || this.is_bounds(west_cell_type.type)) {
             const face = new PlaneGeometry(this.#cell_size.x, this.#cell_size.y).rotateY(Math.PI / 2);
             face.translate(pixel_info.x * this.#cell_size.x - this.#cell_size.z / 2.0, this.#cell_size.y * height, pixel_info.y * this.#cell_size.z);
             wall_geometries.push(face);
         }
         else {
-            this.maze_nav[pixel_info.id + this.nav_layer_length * height] |= Maze_Level.PATHING.WEST;
-            //this.add_arrow(new ArrowHelper(new Vector3(-1, 0, 0), new Vector3(pixel_info.x * this.#cell_size.x, this.#cell_size.y * height, pixel_info.y * this.#cell_size.z), 1.5, 0x00ff00, 0.3, 0.15));
             if (!(Maze_Level.FLAGS.RAMP & west_cell_type.type || Maze_Level.FLAGS.RAMP & cell_type.type)) {
                 this.navigation_grid.setCellConnFlag(pixel_info.x, height, pixel_info.y, NavigationGrid3D.CONN_DIR.WEST)
             }
@@ -333,8 +372,6 @@ export class Maze_Level extends Level {
 
         }
         else {
-            this.maze_nav[pixel_info.id + this.nav_layer_length * height] |= Maze_Level.PATHING.DOWN;
-            //this.add_arrow(new ArrowHelper(new Vector3(0, -1, 0), new Vector3(pixel_info.x * this.#cell_size.x, this.#cell_size.y * height, pixel_info.y * this.#cell_size.z), 1.5, 0x00ff00, 0.3, 0.15));
             if (!(Maze_Level.FLAGS.RAMP & down_cell_type.type || Maze_Level.FLAGS.RAMP & cell_type.type)) {
                 this.navigation_grid.setCellConnFlag(pixel_info.x, height, pixel_info.y, NavigationGrid3D.CONN_DIR.DOWN)
             }
@@ -353,8 +390,6 @@ export class Maze_Level extends Level {
             }
         }
         else {
-            this.maze_nav[pixel_info.id + this.nav_layer_length * height] |= Maze_Level.PATHING.UP;
-            //this.add_arrow(new ArrowHelper(new Vector3(0, 1, 0), new Vector3(pixel_info.x * this.#cell_size.x, this.#cell_size.y * height, pixel_info.y * this.#cell_size.z), 1.5, 0x00ff00, 0.3, 0.15));
             if (!(Maze_Level.FLAGS.RAMP & up_cell_type.type || Maze_Level.FLAGS.RAMP & cell_type.type)) {
                 this.navigation_grid.setCellConnFlag(pixel_info.x, height, pixel_info.y, NavigationGrid3D.CONN_DIR.UP)
             }
@@ -375,46 +410,10 @@ export class Maze_Level extends Level {
                 new CANNON.Vec3(pixel_info.x * this.#cell_size.x, this.#cell_size.y * height + this.#cell_size.y / 2.0, pixel_info.y * this.#cell_size.z),
                 new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -cell_type.variation * Math.PI / 2).mult(new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(1, 0, 0), Math.PI / 4))
             );
-            //TODO: this is not proper. it just say the ramp direction. need to verify if the connections cells are vaild
-            //such as north ramp need above and above north open to be nav northward
-            //and need south open to travel there also south could be a hole which mean not open which means that if it a north ramp below
-            //it will still be navigatible. so a series of check are needed for ramps
-            //also for floors since if no floor, then no nav so would need a check to see if ramp invaild direction
-            //so the nav currently wont be useful for traveling up or down
-            //though may be able to simplify it by checking and setting at a ramp (as long as nav is not chunked)
-            //so it will flag the up direction correctly
-            //if(up is open and var_direction is open){state up is a downward -var_direction and up_var_direction can move -var_direction and current cell is a vaild up_var_direction}
-            //just need to correctly convert variantion into an direction
-            //belive 0 is north and 1 is east (or clockwise)
-            const var_direction = ['north', 'east', 'south', 'west', 'north', 'east', 'south', 'west'];
-            //const forward_direction = [this.PATHING.NORTH,this.PATHING.EAST,this.PATHING.SOUTH, this.PATHING.WEST];
-            //const upward_direction = [this.PATHING.UP_NORTH,this.PATHING.UP_EAST,this.PATHING.UP_SOUTH,this.PATHING.UP_WEST];
-            //const downward_direction = [this.PATHING.DOWN_NORTH,this.PATHING.DOWN_EAST,this.PATHING.DOWN_SOUTH,this.PATHING.DOWN_WEST];
-            //const back_direction = [this.PATHING.SOUTH, this.PATHING.WEST, this.PATHING.NORTH, this.PATHING.EAST]; //probably could offset with math
-            const arrow_x = (v) => {
-                if (v == 1) { return 1 }
-                if (v == 3) { return -1 }
-                if (v == 5) { return -1 }
-                if (v == 7) { return 1 }
-                return 0
-            }
-            const arrow_z = (v) => {
-                if (v == 0) { return -1 }
-                if (v == 2) { return 1 }
-                if (v == 4) { return 1 }
-                if (v == 6) { return -1 }
-                return 0
-            }
-            //TODO:NOTE: should treat the ramp like they are walls for nav before hand. should not need to unset flags
-            //instead it be easier to create all the connection. to be safe, ramps connect on same neg_dir and upper dir only
-            //then just need to make sure upper and neg forward cells are connected correctly
-            //current issues is that the ramp directions dose not seem to be generating correctly or the arrow is not getting a correct representation
-            //of the direction. also the part the ramp block dose not seem to be correctly broken (at least one remains)
-            //also i wonder if the neg dir is correct in nav. seem off, but test shows it should be correct (unless missread. has a up n. down s and up e and dowm w, but if it incorrect, 
-            //it could still be the same (i assume ne or something would appear since the error be an offset by 1)
-            const up_forward_cell_type = this.get_cell_type(pixels_data[var_direction[cell_type.variation]], height + 1);
-            const forward_cell_type = this.get_cell_type(pixels_data[var_direction[cell_type.variation]], height);
-            const back_cell_type = this.get_cell_type(pixels_data[var_direction[cell_type.variation + 2]], height);
+
+            const up_forward_cell_type = this.get_cell_type(pixels_data[cell_type.variation], height + 1);
+            //const forward_cell_type = this.get_cell_type(pixels_data[cell_type.variation], height);
+            const back_cell_type = this.get_cell_type(pixels_data[(cell_type.variation + 2) % Maze_Level.DIRECTIONS.length], height);
             if (!this.is_wall(up_cell_type.type) && !this.is_bounds(up_cell_type.type) && !this.has_floor(up_cell_type.type) && !this.has_ceil(cell_type.type)) {
                 //console.log('up is open and floorless')
                 if (!this.is_wall(up_forward_cell_type.type) && !this.is_bounds(up_forward_cell_type.type) && this.has_floor(up_forward_cell_type.type)) {
@@ -422,44 +421,27 @@ export class Maze_Level extends Level {
                     if (Maze_Level.FLAGS.RAMP & up_forward_cell_type.type && up_forward_cell_type.variation !== cell_type.variation) {
                         //console.log('but has a ramp not in the same direction')
                     }
-                    else { //NOTE: there a chance nav is generated a in the upper boundires so need to figure out a check (less than 4 or less than 5 or from a declare var)
-                        //set self as vaild
-                        this.maze_nav[cell_type.id + this.nav_layer_length * height] |= Maze_Level.upward_direction[cell_type.variation];
+                    else {
+                        //setting connection of this cell open in its upper direction
                         this.navigation_grid.setCellConnFlag(pixel_info.x, height, pixel_info.y, NavigationGrid3D.getConnDir(NavigationGrid3D.CONN_DIR_TYPE.UP, cell_type.variation * 2 + 1))
-                        //set up as down ramp
-                        this.maze_nav[up_cell_type.id + this.nav_layer_length * (height + 1)] |= Maze_Level.downward_direction[cell_type.variation];
-                        //inverting it since it should be the opposit direction of the ramp (up_north to down_south)
-                        this.navigation_grid.setCellConnFlag(up_cell_type.pixel_info.x, up_cell_type.height, up_cell_type.pixel_info.y, NavigationGrid3D.getConnDir(NavigationGrid3D.CONN_DIR_TYPE.DOWN, (cell_type.variation * 2 + 5)))
-                        //tell upper that it can move in the direction of the ramp
-                        this.maze_nav[up_forward_cell_type.id + this.nav_layer_length * (height + 1)] |= Maze_Level.back_direction[cell_type.variation];
-                        this.navigation_grid.setCellConnFlag(up_forward_cell_type.pixel_info.x, up_forward_cell_type.height, up_forward_cell_type.pixel_info.y, NavigationGrid3D.getConnDir(NavigationGrid3D.CONN_DIR_TYPE.SAME, (cell_type.variation * 2 + 5)))
-
-                        // this.add_arrow(new ArrowHelper(new Vector3(arrow_x(cell_type.variation), 1, arrow_z(cell_type.variation)).normalize(), new Vector3(pixel_info.x * this.#cell_size.x, this.#cell_size.y * height + this.#cell_size.y / 2.0, pixel_info.y * this.#cell_size.z), 1.5, 0xe0f2ff, 0.3, 0.15));
-                        // this.add_arrow(new ArrowHelper(new Vector3(arrow_x(cell_type.variation + 4), -1, arrow_z(cell_type.variation + 4)).normalize(), new Vector3(up_cell_type.pixel_info.x * this.#cell_size.x, this.#cell_size.y * (height + 1), up_cell_type.pixel_info.y * this.#cell_size.z), 1.5, 0xe0f2ff, 0.3, 0.15));
-                        // this.add_arrow(new ArrowHelper(new Vector3(arrow_x(cell_type.variation + 4), 0, arrow_z(cell_type.variation + 4)).normalize(), new Vector3(up_forward_cell_type.pixel_info.x * this.#cell_size.x, this.#cell_size.y * height, up_forward_cell_type.pixel_info.y * this.#cell_size.z), 1.5, 0xe0f2ff, 0.3, 0.15));
-                        //new approch block ramp. so need to make sure the lower enterance is open for both this cell and bacl cell
-                        this.navigation_grid.setCellConnFlag(pixel_info.x, height, pixel_info.y, NavigationGrid3D.getConnDir(NavigationGrid3D.CONN_DIR_TYPE.SAME, cell_type.variation * 2 + 5))
-                        this.navigation_grid.setCellConnFlag(back_cell_type.pixel_info.x, height, back_cell_type.pixel_info.y, NavigationGrid3D.getConnDir(NavigationGrid3D.CONN_DIR_TYPE.SAME, cell_type.variation * 2 + 1))
-
+                        //setting uppder direction to point down in the opposite direction
+                        this.navigation_grid.setCellConnFlag(up_forward_cell_type.pixel_info.x, up_forward_cell_type.height, up_forward_cell_type.pixel_info.y, NavigationGrid3D.getConnDir(NavigationGrid3D.CONN_DIR_TYPE.DOWN, (cell_type.variation * 2 + 5)))
                     }
-                    //NOTE: TODO: also need to make sure the forward_cell neg direction is blocked as well as the cell forward direction is block
-                    //since the ramp prevent traveing on the same level if connected above
-                    //NOTE: seems the blocking happening a little more forward than nessary or at least from how the arrows are rendering
-                    //UPDATE: the offset probably correct. the area under the slop is not navigatble or well it could, but the multi layer would be a pain
-                    //and why it should be a wedge or blocking9
-                    this.maze_nav[cell_type.id + this.nav_layer_length * height] &= ~Maze_Level.forward_direction[cell_type.variation];
-                    this.maze_nav[forward_cell_type.id + this.nav_layer_length * height] &= ~Maze_Level.back_direction[cell_type.variation];
-                    //this.add_arrow(new ArrowHelper(new Vector3(arrow_x(cell_type.variation), 0, arrow_z(cell_type.variation)), new Vector3(pixel_info.x * this.#cell_size.x, this.#cell_size.y * height, pixel_info.y * this.#cell_size.z), 1.5, 0xff0000, 0.3, 0.15));
-                    //this.add_arrow(new ArrowHelper(new Vector3(arrow_x(cell_type.variation + 4), 0, arrow_z(cell_type.variation + 4)), new Vector3(forward_cell_type.pixel_info.x * this.#cell_size.x, this.#cell_size.y * height, forward_cell_type.pixel_info.y * this.#cell_size.z), 1.5, 0xff0000, 0.3, 0.15));
-                    //permissions &= ~FLAG_WRITE
-                    //this.navigation_grid.clearCellConnFlag(cell_type.pixel_info.x, height, cell_type.pixel_info.y, NavigationGrid3D.getConnDir(NavigationGrid3D.CONN_DIR_TYPE.SAME, cell_type.variation * 2 + 1))
-                    //this.navigation_grid.clearCellConnFlag(forward_cell_type.pixel_info.x, height, forward_cell_type.pixel_info.y, NavigationGrid3D.getConnDir(NavigationGrid3D.CONN_DIR_TYPE.SAME, (cell_type.variation * 2 + 5)))
-
                 }
             }
-            //this.maze_nav[pixel_info.id] |= 1 << (11 + cell_type.variation); //this may be harder to read, but should reprsent the direction
-            //not it reprsents only the up direction since we do not check the down direction yet (since the mesh and collsion already exits)
-            //so down cases will be missing for now/ 
+            //add the additional connections since ramp connections was ignored in the wall, floor, and ceil build logic
+            //ignoring adj directions since the ramp half block it
+            if (!this.is_wall(back_cell_type.type) && !this.is_bounds(back_cell_type.type)) {
+                //if back direction is not blocked, add a conection in both directions
+                this.navigation_grid.setCellConnFlag(pixel_info.x, height, pixel_info.y, NavigationGrid3D.getConnDir(NavigationGrid3D.CONN_DIR_TYPE.SAME, cell_type.variation * 2 + 5))
+                this.navigation_grid.setCellConnFlag(back_cell_type.pixel_info.x, height, back_cell_type.pixel_info.y, NavigationGrid3D.getConnDir(NavigationGrid3D.CONN_DIR_TYPE.SAME, cell_type.variation * 2 + 1))
+            }
+            //ignoring ramps above since dealing with that odd space would be difficult without another level of nav data to state how the exits are connected
+            if (!this.has_floor(up_cell_type.type) && !this.has_ceil(cell_type.type) && !(Maze_Level.FLAGS.RAMP & up_cell_type.type)) {
+                //adding up connection to this cell and down for the cell above
+                this.navigation_grid.setCellConnFlag(pixel_info.x, height, pixel_info.y, NavigationGrid3D.getConnDir(NavigationGrid3D.CONN_DIR_TYPE.UP, 0))
+                this.navigation_grid.setCellConnFlag(up_cell_type.pixel_info.x, up_cell_type.height, up_cell_type.pixel_info.y, NavigationGrid3D.getConnDir(NavigationGrid3D.CONN_DIR_TYPE.DOWN, 0))
+            }
         }
     }
 
@@ -467,16 +449,16 @@ export class Maze_Level extends Level {
         let segment_id = 0;
         const size = 64 * 4;
         this.clear_maze_segments();
-        for (const arrow of this.arrows) {
-            this.remove(arrow)
-        }
-        this.arrows.clear()
+        //for (const arrow of this.arrows) {
+        //    this.remove(arrow)
+        //}
+        //this.arrows.clear()
         //nav_layer_length * hight should allow each height to have its own layer up to 4
         //but I am not sure if apha will be used
-        this.nav_layer_length = this.level_image.data.length / 4;
+        //this.nav_layer_length = this.level_image.data.length / 4;
         //only using some of the length since alpha is not being used as a height layer
         //note: could use image width, image height, and total maze height
-        this.#maze_nav = new Int32Array(Math.floor(this.nav_layer_length * 3));
+        //this.#maze_nav = new Int32Array(Math.floor(this.nav_layer_length * 3));
 
         this.navigation_grid.initialize(this.level_image.image.width, 3, this.level_image.image.height, this.position.clone(), this.cell_size.clone())
 
@@ -519,7 +501,6 @@ export class Maze_Level extends Level {
                         )
                     }
                     else {
-                        this.maze_nav[pixel_info.id] |= Maze_Level.PATHING.OPEN; // first bit state there is space, but only useful for teleportation
                         this.navigation_grid.setCellConnFlag(pixel_info.x, i, pixel_info.y, NavigationGrid3D.CONN_DIR.OPEN)
                         //probably can add cell type
                         this.create_wall(pixel_info, cell_type, pixels_data, wall_geometries, wall_body, i);
@@ -549,90 +530,7 @@ export class Maze_Level extends Level {
                 requestAnimationFrame(step);
             }
             else {
-                //NOTE TODO: the code commented out should be used to render the arrow
-                //to see how the nav grid is built. would need a const of vectors for each direction types(for facing direction)
-                //and position a little above the floor. then just need to make sure the position is center of the grid
-                //(may need to use an for i in length of array and make a index to coord function)
-                const FLAG_NAME = Object.fromEntries(
-                    Object.entries(NavigationGrid3D.CONN_DIR).map(([name, value]) => [value, name])
-                );
-                const cell_dir = new Set();
-                const dir = { x: 0, y: 0, z: 0 }
-                const cell_position = new Vector3()
-                let arrow_color = 0xff0000
-                let direction_length = 0;
-                for (let cell_index = 0; cell_index < this.navigation_grid.cellConnections.length; cell_index++) {
-                    //for (let bitmask of this.navigation_grid.cellConnections) {
-                    let mask = this.navigation_grid.cellConnections[cell_index];
-                    cell_dir.clear()
-                    while (mask !== 0) {
-                        // Extract the lowest set bit
-                        const flag = mask & -mask;
-                        const flag_name = FLAG_NAME[flag];
-                        cell_dir.add(flag_name)
-                        if (flag_name.includes("UP")) { dir.y = 1 }
-                        else if (flag_name.includes("DOWN")) { dir.y = -1 }
-                        else { dir.y = 0 }
-                        if (flag_name.includes("NORTH")) { dir.z = -1 }
-                        else if (flag_name.includes("SOUTH")) { dir.z = 1 }
-                        else { dir.z = 0 }
-                        if (flag_name.includes("EAST")) { dir.x = 1 }
-                        else if (flag_name.includes("WEST")) { dir.x = -1 }
-                        else { dir.x = 0 }
-                        direction_length = Math.abs(dir.x) + Math.abs(dir.y) + Math.abs(dir.z)
-                        if (direction_length >= 2) {
-                            arrow_color = 0xe0f2ff;
-                        }
-                        else{
-                            arrow_color = 0x00ff00;
-                        }
-                        //look like maybe ramps are not set up correctly
-                        //may also need to treat ramps as blocked and then set the flags
-                        //in the connected directions
-                        if (direction_length !== 0) {
-                            this.navigation_grid.getCellPosition(cell_index, cell_position)
-                            this.add_arrow(
-                                new ArrowHelper(
-                                    new Vector3(
-                                        dir.x,
-                                        dir.y,
-                                        dir.z
-                                    ).normalize(),
-                                    cell_position.clone().add(new Vector3(0, 1.5, 0)),
-                                    1.5,
-                                    arrow_color,
-                                    0.3,
-                                    0.15
-                                )
-                            );
-                            if (direction_length >= 2) {
-                                console.log('arrow should have been made for', dir)
-                            }
-                        }
-
-                        //console.log(FLAG_NAME[flag],dir);
-                        // Clear that bit
-                        mask &= mask - 1;
-                        if (Math.abs(dir.x) + Math.abs(dir.y) + Math.abs(dir.z) >= 2) {
-                            console.log(dir)
-                        }
-                    }
-                    if (cell_dir.has(FLAG_NAME[NavigationGrid3D.CONN_DIR.UP]) || cell_dir.has(FLAG_NAME[NavigationGrid3D.CONN_DIR.DOWN]) ||
-                        cell_dir.has(FLAG_NAME[NavigationGrid3D.CONN_DIR.UP_NORTH]) || cell_dir.has(FLAG_NAME[NavigationGrid3D.CONN_DIR.DOWN_SOUTH]) ||
-                        cell_dir.has(FLAG_NAME[NavigationGrid3D.CONN_DIR.UP_EAST]) || cell_dir.has(FLAG_NAME[NavigationGrid3D.CONN_DIR.DOWN_WEST])) {
-                        console.log(Array.from(cell_dir).join(", "));
-                    }
-
-
-                }
-                //use config to figure out player spawn location
-                //or let maze_game figure it out
-                //but there should be nodes in the config to represent enterances(spawns) and exits
-                //probably should be an object of type, cell point, local position(or offset), and other metadata
-                //maybe called entities or objects
-                console.log(this.maze_nav)
-                console.log(this.navigation_grid)
-                console.log(this.navigation_grid.cellConnections)
+                this.update_nav_debug(this.nav_debug ? this.nav_debug.enable: false, true)
                 this.ready();
                 this.signal_ready.emit();
             }
@@ -795,14 +693,7 @@ export class Maze_Level extends Level {
         }
         return ['string', string];
     }
-    //store created resources by id so they can be removed
-    //when reloading. This is for cases where new resource have a unquie id
-    //and will likly not be overriden on reloaded. This could also filter out
-    //importaint id if needed, but they probably should be store in self
-    //could change resource manager to allow source to be overriden and keep the ref here
-    //but the idea is to allow resource to be shared globally if not unquie.
-    //include existing is to override ignoring type/id pairs that already exist
-    //so if false, it needs to be called before setting that resource.
+
     cache_created_resources(type, id, include_existing = false) {
         if (!this.cache_resources) { this.cache_resources = {}; }
         if (!this.cache_resources[type]) { this.cache_resources[type] = new Set(); }
@@ -867,12 +758,6 @@ export class Maze_Level extends Level {
         //may need to call loading before or after creating the level where it can be awaited
         console.log(config_path)
         this.load_config(config_path);
-        //this.maze_image = source_image;
 
-        //this.renderer = this.resources.get_renderer(
-        //    'main',
-        //    new THREE.WebGLRenderer({ canvas, antialias: true, logarithmicDepthBuffer: true })
-        //)
-        //this.renderer.setSize(canvas.width, canvas.height);
     }
 }
