@@ -4,26 +4,34 @@
 //due to it not being nessary.
 //NOTE: this should not handle input events directly. it here to remap key binds and add additional input support
 export class Input_Manager {
-    static #KEYS = {
-        INPUT: {
+    //static #KEYS = {
+    //    INPUT: {
+    //        UP: 'UP', DOWN: 'DOWN', RIGHT: 'RIGHT', LEFT: 'LEFT', FORWARD: 'FORWARD', BACK: 'BACK',
+    //        LIGHT: 'LIGHT', DEBUG: 'DEBUG', SHIFT: 'SHIFT', CONTROL: 'CONTROL'
+    //    },
+    //    KEY_STATE: { RELEASED: -1, UP: 0, PRESSED: 1, DOWN: 2 }
+    //}
+    //static get KEYS() { return this.#KEYS; }
+    static #INPUT= {
             UP: 'UP', DOWN: 'DOWN', RIGHT: 'RIGHT', LEFT: 'LEFT', FORWARD: 'FORWARD', BACK: 'BACK',
-            LIGHT: 'LIGHT', DEBUG: 'DEBUG', SHIFT: 'SHIFT', CONTROL: 'CONTROL'
-        },
-        KEY_STATE: { RELEASED: -1, UP: 0, PRESSED: 1, DOWN: 2 }
-    }
-    static get KEYS() { return this.#KEYS; }
+            LIGHT: 'LIGHT', DEBUG: 'DEBUG', SHIFT: 'SHIFT', CONTROL: 'CONTROL', ACTIVATE:'ACTIVATE'
+        }
+    static get INPUT() { return this.#INPUT; }
+    static #INPUT_STATE = { RELEASED: -1, UP: 0, PRESSED: 1, DOWN: 2 }
+    static get INPUT_STATE() { return this.#INPUT_STATE; }
     //this will store the default bindings(could update it from config) as well as infomation such as if it is pressed and the strength
     static #input_actions = {
-        [this.KEYS.INPUT.FORWARD]: { keymap: ['w', 'arrowup'] },
-        [this.KEYS.INPUT.BACK]: { keymap: ['s', 'arrowdown'] },
-        [this.KEYS.INPUT.RIGHT]: { keymap: ['d', 'arrowright'] },
-        [this.KEYS.INPUT.LEFT]: { keymap: ['a', 'arrowleft'] },
-        [this.KEYS.INPUT.UP]: { keymap: ['e'] },
-        [this.KEYS.INPUT.DOWN]: { keymap: ['q'] },
-        [this.KEYS.INPUT.LIGHT]: { keymap: ['l'] },
-        [this.KEYS.INPUT.DEBUG]: { keymap: ['`'] },
-        [this.KEYS.INPUT.SHIFT]: { keymap: ['shift'] },
-        [this.KEYS.INPUT.CONTROL]: { keymap: ['control'] }
+        [this.INPUT.FORWARD]: { keymap: ['w', 'arrowup'] },
+        [this.INPUT.BACK]: { keymap: ['s', 'arrowdown'] },
+        [this.INPUT.RIGHT]: { keymap: ['d', 'arrowright'] },
+        [this.INPUT.LEFT]: { keymap: ['a', 'arrowleft'] },
+        [this.INPUT.UP]: { keymap: [' '] },
+        [this.INPUT.DOWN]: { keymap: ['q'] },
+        [this.INPUT.LIGHT]: { keymap: ['l'] },
+        [this.INPUT.DEBUG]: { keymap: ['`'] },
+        [this.INPUT.SHIFT]: { keymap: ['shift'] },
+        [this.INPUT.CONTROL]: { keymap: ['control'] },
+        [this.INPUT.ACTIVATE]: { keymap: ['E'] }
     };
 
     static get input_actions() { return this.#input_actions; }

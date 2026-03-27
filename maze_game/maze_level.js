@@ -1,4 +1,4 @@
-import { TextureLoader, Vector3, Box3, PlaneGeometry, Mesh, MeshStandardMaterial, FileLoader, ArrowHelper, Object3D } from 'three';
+import { TextureLoader, Vector3, Box3, PlaneGeometry, Mesh, MeshStandardMaterial, FileLoader, ArrowHelper, Object3D, Color, Fog } from 'three';
 import * as BufferGeometryUtils from "three/addons/utils/BufferGeometryUtils.js";
 import * as Game_Utils from './game_utility.js'
 import * as CANNON from "https://esm.sh/cannon-es";
@@ -530,7 +530,7 @@ export class Maze_Level extends Level {
                 requestAnimationFrame(step);
             }
             else {
-                this.update_nav_debug(this.nav_debug ? this.nav_debug.enable: false, true)
+                this.update_nav_debug(this.nav_debug ? this.nav_debug.enable : false, true)
                 this.ready();
                 this.signal_ready.emit();
             }
@@ -620,23 +620,46 @@ export class Maze_Level extends Level {
         //passing it to resource loader to load resource/
         //may need to store it in the object if vaild instead of passing it since
         //it will need to be ref a few times
-        if (this.config) {
-            this.maze_image = this.config.level_image ? this.config.level_image : Maze_Level.default_source_image;
-            if (this.config.cell_size) {
-                this.cell_size.set(
-                    this.config.cell_size.x ? this.config.cell_size.x : 2,
-                    this.config.cell_size.y ? this.config.cell_size.y : 2,
-                    this.config.cell_size.z ? this.config.cell_size.z : 2
-                );
-            }
-            else {
-                this.cell_size.set(2, 2, 2);
-            }
-        } else {
+        if (!this.config) {
             console.log('no config loaded')
-            this.maze_image = Maze_Level.default_source_image;
+            this.config = {}
+        }
+        //if (this.config) {
+        this.maze_image = this.config.level_image ? this.config.level_image : Maze_Level.default_source_image;
+        if (this.config.cell_size) {
+            this.cell_size.set(
+                this.config.cell_size.x ? this.config.cell_size.x : 2,
+                this.config.cell_size.y ? this.config.cell_size.y : 2,
+                this.config.cell_size.z ? this.config.cell_size.z : 2
+            );
+        }
+        else {
             this.cell_size.set(2, 2, 2);
         }
+        this.background = this.config.background ? this.parce_type_string(this.config.background)[1] : null;
+        if (this.config.fog) {
+            //type forces it to use a diffrent class if logic support the id.
+            if (this.config.fog.type === 'exp2') {
+                this.fog = new Fog(
+                    this.config.fog.color ? this.parce_type_string(this.config.fog.color)[1] : '#000000',
+                    this.config.fog.density ? this.convert_type('number',this.config.fog.density)[1] : 0.2
+                );
+
+            }
+            else {
+                this.fog = new Fog(
+                    this.config.fog.color ? this.parce_type_string(this.config.fog.color)[1] : '#000000',
+                    this.config.fog.near ? this.convert_type('number',this.config.fog.near)[1] : 0,
+                    this.config.fog.far ? this.convert_type('number',this.config.fog.far)[1] : 100
+                );
+            }
+        }
+        else {
+            //may need to recompute shaders of mats that are not recomputed on load
+            this.fog = null;
+        }
+
+
         console.log(this.maze_image);
 
         this.load_resources();
@@ -647,30 +670,30 @@ export class Maze_Level extends Level {
         if (this.config && this.config.textures) {
             for (const [group_id, group] of Object.entries(this.config.textures)) {
                 for (const [id, path] of Object.entries(group)) {
-                    this.cache_created_resources(Resource_Manager.KEYS.TYPES.TEXTURE, id);
+                    this.cache_created_resources(Resource_Manager.TYPES.TEXTURE, id);
                     //note: may need to add group id to id, but also need to update the setters to use that id instead
-                    this.resources.load_resource(path, id, Resource_Manager.KEYS.TYPES.TEXTURE);
+                    this.resources.load_resource(path, id, Resource_Manager.TYPES.TEXTURE);
                 }
             }
         }
         else {
             console.log('no vaild config loaded, using default level resources')
             //texture is for more detail, but normal map adds the texture from light depth
-            this.resources.load_resource('assets/texture.png', 'texture', Resource_Manager.KEYS.TYPES.TEXTURE);
+            this.resources.load_resource('assets/texture.png', 'texture', Resource_Manager.TYPES.TEXTURE);
             //normal may or may not be correct. need to check the light order. also could see how bumbmap works if the lighting is simple
-            this.resources.load_resource('assets/normal.png', 'normal', Resource_Manager.KEYS.TYPES.TEXTURE);
+            this.resources.load_resource('assets/normal.png', 'normal', Resource_Manager.TYPES.TEXTURE);
 
             //spec(metal) and ao could be merge into a single texture. https://threejs.org/docs/#MeshStandardMaterial has more info about the maps
             this.resources.load_resource('assets/specular.png', 'specular', Resource_Manager.KEYS.TYPES.TEXTURE);
 
-            this.resources.load_resource('assets/ao.png', 'ao', Resource_Manager.KEYS.TYPES.TEXTURE);
+            this.resources.load_resource('assets/ao.png', 'ao', Resource_Manager.TYPES.TEXTURE);
 
-            this.resources.load_resource('assets/lightmap.png', 'lightmap', Resource_Manager.KEYS.TYPES.TEXTURE);
+            this.resources.load_resource('assets/lightmap.png', 'lightmap', Resource_Manager.TYPES.TEXTURE);
         }
     }
     //might be better to move this to resource manager since it may be reusable there
     convert_type(type, value) {
-        if (type === Resource_Manager.KEYS.TYPES.TEXTURE) {
+        if (type === Resource_Manager.TYPES.TEXTURE) {
             return this.resources.get_texture(value);
         }
         if (type === 'number') {
@@ -680,18 +703,33 @@ export class Maze_Level extends Level {
         if (type === 'hex') {
             return parseInt(value, 16)
         }
+        if (type === 'color') {
+            return new Color(value);
+        }
         return value;
     }
     //only for simple cases where there is one set of ::
     parce_type_string(string, convert_value = true) {
-        if (string.includes("::")) {
-            const result = string.split("::");
-            if (convert_value) {
-                result[1] = this.convert_type(result[0], result[1]);
+        if (string !== null && string !== undefined) {
+            if (string === 'undefined') {
+                return ['undefined', undefined]
             }
-            return result;
+            if (string === 'null') {
+                //will return type as object to behave similar as typeof.
+                return ['object', null]
+            }
+            if (string.includes("::")) {
+                const result = string.split("::");
+                if (convert_value) {
+                    result[1] = this.convert_type(result[0], result[1]);
+                }
+                return result;
+            }
+            return ['string', string];
         }
-        return ['string', string];
+        //if null, type should be object, but this case should not happen often
+        return [typeof (string), string]
+
     }
 
     cache_created_resources(type, id, include_existing = false) {
@@ -722,7 +760,7 @@ export class Maze_Level extends Level {
                         console.log('Warning: maze_level resource loader material value to set is ', parced_value[1], ' for ', property)
                     }
                     //need to be call before setting so it can ignore preloaded resources to clear on reload
-                    this.cache_created_resources(Resource_Manager.KEYS.TYPES.MATERIAL, material_id);
+                    this.cache_created_resources(Resource_Manager.TYPES.MATERIAL, material_id);
                     const material = this.resources.get_material(
                         material_id,
                         new MeshStandardMaterial({ color: 0x6a7a8c, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 10 })

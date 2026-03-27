@@ -41,7 +41,7 @@ export class Maze_Game extends Game {
 	on_key_down(event) {
 		const key = Input_Manager.input_event(event, true);
 
-		if (key === Input_Manager.KEYS.INPUT.LIGHT) {
+		if (key === Input_Manager.INPUT.LIGHT) {
 			if (this.player.light.color.getHex() == 0xf8c377) {
 				this.player.light.color.setHex(0x3a3a4f);
 			}
@@ -49,7 +49,7 @@ export class Maze_Game extends Game {
 				this.player.light.color.setHex(0xf8c377);
 			}
 		}
-		if (key === Input_Manager.KEYS.INPUT.DEBUG) {
+		if (key === Input_Manager.INPUT.DEBUG) {
 			if (this.debug_mode) {
 				this.debug_mode = false;
 				this.player.position.y = 0.0;
@@ -168,37 +168,44 @@ export class Maze_Game extends Game {
 		loop()
 	}
 	main_loop() {
-
+		this.player_controller.direction.set(0, 0, 0);
 		this.player_controller.states.speed = 0;
 		//NOTE: the speed mod is really the controller.states.speed if moving.
-		let speed_mod = Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.SHIFT) ? 2 : 1
-		if (this.debug_mode) { speed_mod *= 2.0 }
-		if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.FORWARD)) {
+		let speed_mod = Input_Manager.is_key_down(Input_Manager.INPUT.SHIFT) ? 2 : 1
+		if (this.debug_mode) { 
+			speed_mod *= 2.0 
+		}
+		this.player_controller.states.speed = speed_mod;
+		if (Input_Manager.is_key_down(Input_Manager.INPUT.FORWARD)) {
 			getDirectionFromQuaternion(this.player.physics_body.quaternion, this.player_controller.direction)
 			//Game_Utils.get_forward_direction(this.player.physics_body, this.player_controller.direction);
-			this.player_controller.states.speed = speed_mod;
+			//this.player_controller.states.speed = speed_mod;
 		}//need to redesign it. else if because it acts really odd when both are if. probably because of how direction is handled
-		else if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.BACK)) {
+		else if (Input_Manager.is_key_down(Input_Manager.INPUT.BACK)) {
 			getDirectionFromQuaternion(this.player.physics_body.quaternion, this.player_controller.direction)
 			//Game_Utils.get_forward_direction(this.player.physics_body, this.player_controller.direction);
 			this.player_controller.direction.scale(-1, this.player_controller.direction);
-			this.player_controller.states.speed = speed_mod;
+			//this.player_controller.states.speed = speed_mod;
 		}
 
-		if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.LEFT)) { this.player.movement_component.rotate(0.05) }
-		if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.RIGHT)) { this.player.movement_component.rotate(-0.05); }
+		if (Input_Manager.is_key_down(Input_Manager.INPUT.LEFT)) { this.player.movement_component.rotate(0.05) }
+		if (Input_Manager.is_key_down(Input_Manager.INPUT.RIGHT)) { this.player.movement_component.rotate(-0.05); }
 
-		if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.UP)) {
+		if (Input_Manager.is_key_down(Input_Manager.INPUT.UP)) {
 			if (this.debug_mode) {
-				this.player_controller.direction.y += 1.0;
-				this.player_controller.states.speed = speed_mod;
+				//	this.player_controller.direction.y += 1.0;
+				//this.player_controller.states.speed = speed_mod;
+				this.player_controller.direction.y = 1.0;
 			}
-			this.player_controller.trigger_action(this.player_controller.ACTIONS.JUMP)
+			else {
+				this.player_controller.trigger_action(this.player_controller.ACTIONS.JUMP)
+			}
 			//player.jump();
 		}
-		else if (Input_Manager.is_key_down(Input_Manager.KEYS.INPUT.DOWN) && this.debug_mode) {
-			this.player_controller.direction.y -= 1.0;
-			this.player_controller.states.speed = speed_mod;
+		else if (Input_Manager.is_key_down(Input_Manager.INPUT.DOWN) && this.debug_mode) {
+			//this.player_controller.direction.y -= 1.0;
+			//this.player_controller.states.speed = speed_mod;
+			this.player_controller.direction.y = -1.0;
 		}
 
 		this.update(performance.now());

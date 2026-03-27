@@ -7,6 +7,9 @@ export class Game {
     get world() { return this.#world; }
 
     //the base scene
+    //will not use this or at least merge it with level
+    //since level may need some root level info to modify and only
+    //one main level per viewport
     #scene = new Scene();
     get scene() { return this.#scene; }
 
@@ -75,7 +78,13 @@ export class Game {
             //    this.disable_render_debugger = true;
             //    cannonDebugger.update();
             //}
-            this.renderer.render(this.scene, this.camera);
+            if (this.level){
+                this.renderer.render(this.level, this.camera);
+            }
+            else{
+                this.renderer.render(this.scene, this.camera);
+            }
+            
         }
     }
 

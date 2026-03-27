@@ -5,6 +5,7 @@
         "y": 3,
         "z": 3
     },
+    "fog":{},
     "textures": {
         "default": {
             "texture": "assets/texture.png",

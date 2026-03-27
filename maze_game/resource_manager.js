@@ -11,11 +11,12 @@ export class Resource_Manager {
     static default_instance = new Resource_Manager();
     //static default_renderer = new THREE.WebGLRenderer(); //may be removed
     //will keep texture loader as a standard var so it could be overriden per instance
-    static #KEYS = Object.freeze({ //CONST string base keys
-        ALL: '*', //allow some functions to process all keys if this pass as an id
-        TYPES: Object.freeze({ RENDERER: 'renderer', MATERIAL: 'material', GEOMETRY: 'geometry', TEXTURE: 'texture' }) //type identification for loaders
-    }); //NOTE: values can be changes, but the container type is locked
-    static get KEYS() { return this.#KEYS; }
+    static #FILTERS = Object.freeze({ //CONST string base keys
+        ALL: '*', //allow some functions to process all keys if this pass as an ids
+    });
+    static get FILTERS() { return this.#FILTERS; }
+    static #TYPES = Object.freeze({ RENDERER: 'renderer', MATERIAL: 'material', GEOMETRY: 'geometry', TEXTURE: 'texture' }) //type identification for loaders
+    static get TYPES() { return this.#TYPES; }
 
     #signal_load_end = new Signal(); get signal_load_end(){return this.#signal_load_end;}
     #signal_load_start = new Signal(); get signal_load_start(){return this.#signal_load_start;}
@@ -41,10 +42,10 @@ export class Resource_Manager {
 
     //may use this instead of allowing a source to reduce function declartions
     #get_type_source(type) {
-        if (Resource_Manager.KEYS.TYPES.RENDERER) { return this.#renderers }
-        if (Resource_Manager.KEYS.TYPES.MATERIAL) { return this.#materials }
-        if (Resource_Manager.KEYS.TYPES.GEOMETRY) { return this.#geometries }
-        if (Resource_Manager.KEYS.TYPES.TEXTURE) { return this.#textures }
+        if (Resource_Manager.TYPES.RENDERER) { return this.#renderers }
+        if (Resource_Manager.TYPES.MATERIAL) { return this.#materials }
+        if (Resource_Manager.TYPES.GEOMETRY) { return this.#geometries }
+        if (Resource_Manager.TYPES.TEXTURE) { return this.#textures }
         return null;
     }
 
@@ -52,10 +53,10 @@ export class Resource_Manager {
     dispose(id, type) {
         const source = this.#get_type_source(type);
         if (source) {
-            if (id === Resource_Manager.ALL_KEY) {
+            if (id === Resource_Manager.FILTERS.ALL) {
                 for (const [loop_key, loop_value] of source) {
                     if (loop_value) {
-                        if (type === Resource_Manager.KEYS.TYPES.RENDERER) {
+                        if (type === Resource_Manager.TYPES.RENDERER) {
                             renderer.renderLists.dispose();
                         }
                         loop_value.dispose();
@@ -66,7 +67,7 @@ export class Resource_Manager {
             }
             const value = source.get(id);
             if (value) {
-                if (type === Resource_Manager.KEYS.TYPES.RENDERER) {
+                if (type === Resource_Manager.TYPES.RENDERER) {
                     renderer.renderLists.dispose();
                 }
                 value.dispose();
@@ -76,7 +77,7 @@ export class Resource_Manager {
     }
     set_resource(id, resource, type, override = true, dispose = true) {
         const source = this.#get_type_source(type);
-        if (resource && source && id !== Resource_Manager.KEYS.ALL) {
+        if (resource && source && id !== Resource_Manager.FILTERS.ALL) {
             if (source.has(id)) {
                 if (override) {
                     if (dispose) {
@@ -90,16 +91,16 @@ export class Resource_Manager {
         }
     }
     set_renderer(id, renderer, override = true, dispose = true) {
-        this.set_resource(id, renderer, Resource_Manager.KEYS.TYPES.RENDERER, override, dispose);
+        this.set_resource(id, renderer, Resource_Manager.TYPES.RENDERER, override, dispose);
     }
     set_material(id, material, override = true, dispose = true) {
-        this.set_resource(id, material, Resource_Manager.KEYS.TYPES.MATERIAL, override, dispose);
+        this.set_resource(id, material, Resource_Manager.TYPES.MATERIAL, override, dispose);
     }
     set_geometry(id, geometry, override = true, dispose = true) {
-        this.set_resource(id, geometry, Resource_Manager.KEYS.TYPES.GEOMETRY, override, dispose);
+        this.set_resource(id, geometry, Resource_Manager.TYPES.GEOMETRY, override, dispose);
     }
     set_texture(id, texture, override = true, dispose = true) {
-        this.set_resource(id, texture, Resource_Manager.KEYS.TYPES.TEXTURE, override, dispose);
+        this.set_resource(id, texture, Resource_Manager.TYPES.TEXTURE, override, dispose);
     }
 
     get_resource(id, type, fallback = null, cache = true) {
@@ -115,16 +116,16 @@ export class Resource_Manager {
         return fallback;
     }
     get_renderer(id, fallback = null, cache = true) {
-        return this.get_resource(id, Resource_Manager.KEYS.TYPES.RENDERER, fallback, cache);
+        return this.get_resource(id, Resource_Manager.TYPES.RENDERER, fallback, cache);
     }
     get_material(id, fallback = null, cache = true) {
-        return this.get_resource(id, Resource_Manager.KEYS.TYPES.MATERIAL, fallback, cache);
+        return this.get_resource(id, Resource_Manager.TYPES.MATERIAL, fallback, cache);
     }
     get_geometry(id, fallback = null, cache = true) {
-        return this.get_resource(id, Resource_Manager.KEYS.TYPES.GEOMETRY, fallback, cache);
+        return this.get_resource(id, Resource_Manager.TYPES.GEOMETRY, fallback, cache);
     }
     get_texture(id, fallback = null, cache = true) {
-        return this.get_resource(id, Resource_Manager.KEYS.TYPES.TEXTURE, fallback, cache);
+        return this.get_resource(id, Resource_Manager.TYPES.TEXTURE, fallback, cache);
     }
 
     has_resource(id, type) {
@@ -136,16 +137,16 @@ export class Resource_Manager {
     }
 
     dispose_renderers(id = '*') {
-        this.dispose(id, Resource_Manager.KEYS.TYPES.RENDERER);
+        this.dispose(id, Resource_Manager.TYPES.RENDERER);
     }
     dispose_materials(id = '*') {
-        this.dispose(id, Resource_Manager.KEYS.TYPES.MATERIAL);
+        this.dispose(id, Resource_Manager.TYPES.MATERIAL);
     }
     dispose_geometries(id = '*') {
-        this.dispose(id, Resource_Manager.KEYS.TYPES.GEOMETRY);
+        this.dispose(id, Resource_Manager.TYPES.GEOMETRY);
     }
     dispose_textures(id = '*') {
-        this.dispose(id, Resource_Manager.KEYS.TYPES.TEXTURE);
+        this.dispose(id, Resource_Manager.TYPES.TEXTURE);
     }
     //some disposables are static ref. They need to have their flags set true
     //and only provided if they are not needed or need to be rebuilt
@@ -182,7 +183,7 @@ export class Resource_Manager {
     }
     //decided to try to wrap it in a promise so it could be awaited, but kept the signals so await is not nessary
     load_resource(file, id, type, source = null, loader = null) {
-        if (type == Resource_Manager.KEYS.TYPES.TEXTURE) {
+        if (type == Resource_Manager.TYPES.TEXTURE) {
             source = this.#textures;
             loader = this.texture_loader;
         }
