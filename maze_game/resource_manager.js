@@ -5,6 +5,7 @@ import { Signal } from './game_core.js'
 //this class stores and links resources for the game
 //as well as manage loading (and perhaps unloading) them
 //generally this class should load first and then allow
+//TODO: this class may be better as a static class instead of having a static instance
 export class Resource_Manager {
     //reosurce manager is ment to have a single instance, 
     //and this allow it to be acess anywhere

@@ -3,10 +3,12 @@ import * as BufferGeometryUtils from "three/addons/utils/BufferGeometryUtils.js"
 import * as Game_Utils from './game_utility.js'
 import * as CANNON from "https://esm.sh/cannon-es";
 import { Resource_Manager } from './resource_manager.js'
-import { Level } from './game_scenes.js'
+import { Level } from './level.js'
 import { Signal } from './game_core.js'
 import { Canvas_Image_Buffer } from './lib/canvas_image_buffer.js'
 import { NavigationGrid3D } from './lib/navigation_grid_3d.js'
+import { Registry } from './lib/registry.js'
+
 
 export class Maze_Level extends Level {
     static default_source_image = "assets/maze.png";
@@ -17,12 +19,6 @@ export class Maze_Level extends Level {
     static #DIRECTIONS = { NORTH: 0, EAST: 1, SOUTH: 2, WEST: 3, length: 4 }; //adding a length property, but need to be updated if the entries changes
     static get DIRECTIONS() { return this.#DIRECTIONS };
 
-    #file_loader = new FileLoader();
-
-    //called when ready to used. will be called when ever the level is rebuilt
-    #signal_ready = new Signal(); get signal_ready() { return this.#signal_ready; }
-    //this will be called when the level is changing aka loading image/file/data. should be used to trigger loading screens and pausing/restarting gameplay
-    #signal_load = new Signal(); get signal_load() { return this.#signal_load; }
 
     #level_image; get level_image() { return this.#level_image; }
     set level_image(value) {
@@ -45,7 +41,6 @@ export class Maze_Level extends Level {
     #maze_segments = new Set(); get maze_segments() { return this.#maze_segments; }
 
     #navigation_grid = new NavigationGrid3D; get navigation_grid() { return this.#navigation_grid; }
-
     //TODO: See if this is needed
     //static_objects = {};
 
@@ -532,7 +527,6 @@ export class Maze_Level extends Level {
             else {
                 this.update_nav_debug(this.nav_debug ? this.nav_debug.enable : false, true)
                 this.ready();
-                this.signal_ready.emit();
             }
         }
         requestAnimationFrame(step);
@@ -591,13 +585,13 @@ export class Maze_Level extends Level {
         this.east_bounds.position.x = this.level_image.image.height * this.#cell_size.x - this.#cell_size.x / 2.0
 
     }
-    ready() {
-
-    }
+    //ready() {
+//
+    //}
     build() {
         this.create_bounds();
         this.build_maze();
-
+        return false;
         //this.signal_ready.emit();
     }
     //this is here to prevent setting it
@@ -605,17 +599,11 @@ export class Maze_Level extends Level {
     //if levels need to be dynamicly added or removed, then this need to be called to clean up certain loose objects
     //but probably should disallow setting cellsize after a level is built. so size may be part of the config
 
-    load_config(path = 'data/default_level.json') {
+    loaded(){
+    //config_loaded(config = undefined) {
         this.clear_cached_resources();
-        this.#file_loader.setResponseType('json');
-        this.#file_loader.load(path, (result) => this.config_loaded(result), undefined, () => this.config_loaded());
-        //note need to handle if there an error. probably build a default object
-        //to be used or skip config_loaded or have a specail cases to handle it
-        //also decide if this should handle the object directly if not a string (just pass it to config loaded)
-    }
-    config_loaded(config = undefined) {
-        console.log(config)
-        this.config = config; //need to verify it is vaild else use a fallback
+        console.log(this.config)
+        //this.config = config; //need to verify it is vaild else use a fallback
         //this will set up the level base on the config before
         //passing it to resource loader to load resource/
         //may need to store it in the object if vaild instead of passing it since
@@ -636,33 +624,11 @@ export class Maze_Level extends Level {
         else {
             this.cell_size.set(2, 2, 2);
         }
-        this.background = this.config.background ? this.parce_type_string(this.config.background)[1] : null;
-        if (this.config.fog) {
-            //type forces it to use a diffrent class if logic support the id.
-            if (this.config.fog.type === 'exp2') {
-                this.fog = new Fog(
-                    this.config.fog.color ? this.parce_type_string(this.config.fog.color)[1] : '#000000',
-                    this.config.fog.density ? this.convert_type('number',this.config.fog.density)[1] : 0.2
-                );
-
-            }
-            else {
-                this.fog = new Fog(
-                    this.config.fog.color ? this.parce_type_string(this.config.fog.color)[1] : '#000000',
-                    this.config.fog.near ? this.convert_type('number',this.config.fog.near)[1] : 0,
-                    this.config.fog.far ? this.convert_type('number',this.config.fog.far)[1] : 100
-                );
-            }
-        }
-        else {
-            //may need to recompute shaders of mats that are not recomputed on load
-            this.fog = null;
-        }
-
 
         console.log(this.maze_image);
 
         this.load_resources();
+        return false
     }
     //todo: handle this better. NOTE: awaiting any of the load_resources will break them TODO: maybe not use async functions or test it again when handle correctly
     load_resources() {
@@ -684,52 +650,12 @@ export class Maze_Level extends Level {
             this.resources.load_resource('assets/normal.png', 'normal', Resource_Manager.TYPES.TEXTURE);
 
             //spec(metal) and ao could be merge into a single texture. https://threejs.org/docs/#MeshStandardMaterial has more info about the maps
-            this.resources.load_resource('assets/specular.png', 'specular', Resource_Manager.KEYS.TYPES.TEXTURE);
+            this.resources.load_resource('assets/specular.png', 'specular', Resource_Manager.TYPES.TEXTURE);
 
             this.resources.load_resource('assets/ao.png', 'ao', Resource_Manager.TYPES.TEXTURE);
 
             this.resources.load_resource('assets/lightmap.png', 'lightmap', Resource_Manager.TYPES.TEXTURE);
         }
-    }
-    //might be better to move this to resource manager since it may be reusable there
-    convert_type(type, value) {
-        if (type === Resource_Manager.TYPES.TEXTURE) {
-            return this.resources.get_texture(value);
-        }
-        if (type === 'number') {
-            return Number(value);
-        }
-        //'0xRRGGBB' conversion
-        if (type === 'hex') {
-            return parseInt(value, 16)
-        }
-        if (type === 'color') {
-            return new Color(value);
-        }
-        return value;
-    }
-    //only for simple cases where there is one set of ::
-    parce_type_string(string, convert_value = true) {
-        if (string !== null && string !== undefined) {
-            if (string === 'undefined') {
-                return ['undefined', undefined]
-            }
-            if (string === 'null') {
-                //will return type as object to behave similar as typeof.
-                return ['object', null]
-            }
-            if (string.includes("::")) {
-                const result = string.split("::");
-                if (convert_value) {
-                    result[1] = this.convert_type(result[0], result[1]);
-                }
-                return result;
-            }
-            return ['string', string];
-        }
-        //if null, type should be object, but this case should not happen often
-        return [typeof (string), string]
-
     }
 
     cache_created_resources(type, id, include_existing = false) {
@@ -754,9 +680,11 @@ export class Maze_Level extends Level {
         if (this.config && this.config.materials) {
             for (const [material_id, material_data] of Object.entries(this.config.materials)) {
                 for (const [property, value_data] of Object.entries(material_data)) {
-                    const parced_value = this.parce_type_string(value_data);
+                    //console.log(this.Registry.parceSourceString(value_data))
+                    const parced_value = Registry.parceSourceString(value_data)
+                    //const parced_value = this.parce_type_string(value_data);
 
-                    if (parced_value[1] === null || parced_value[1] === undefined) {
+                    if (parced_value.value === null || parced_value.value === undefined) {
                         console.log('Warning: maze_level resource loader material value to set is ', parced_value[1], ' for ', property)
                     }
                     //need to be call before setting so it can ignore preloaded resources to clear on reload
@@ -766,10 +694,10 @@ export class Maze_Level extends Level {
                         new MeshStandardMaterial({ color: 0x6a7a8c, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 10 })
                     )
                     if (property === 'color') {
-                        material[property].set(parced_value[1])
+                        material[property].set(parced_value.value)
                     }
                     else {
-                        material[property] = parced_value[1];
+                        material[property] = parced_value.value;
                     }
                     //I hope this get check on next update and not ran as set. internet been acting up so it is harder to check things
                     material.needsUpdate = true;
@@ -786,16 +714,36 @@ export class Maze_Level extends Level {
 
     }
     level_image_ready() {
-        this.signal_load.emit();
         console.log('started building', this)
         this.build()
     }
-    constructor(canvas, world, config_path = 'data/default_level.json') {
+    //TODO: make a generic level class that handles loading from a config and provide
+    //loading logic flow as well as anything else the level needs
+    //note: level could be recreated, but should support restarting and loading instead of being replaced
+    constructor(world, config_path = 'data/default_level.json') {
         super(world);
         this.resources = Resource_Manager.default_instance; //cache the Resource_Manager so it could be overrided
+
+        //add connection to resources types. Note: this may be better in the main class, but config loading
+        //would break if not include
+        Registry.addTypeConversion(Resource_Manager.TYPES.TEXTURE, (value, resources = this.resources) => {
+            return resources.get_texture(value);
+        });
+        Registry.addTypeConversion(Resource_Manager.TYPES.MATERIAL, (value, resources = this.resources) => {
+            return resources.get_material(value);
+        });
+        Registry.addTypeConversion(Resource_Manager.TYPES.GEOMETRY, (value, resources = this.resources) => {
+            return resources.get_geometry(value);
+        });
+        //also need to include color
+        //but also need to decide if color should be shared or not.new color is safe, but could use the value
+        //to decide if it a vaild color or a key to a shared color resource
+        Registry.addTypeConversion('color', (value) => {
+            return new Color(value);
+        });
         //may need to call loading before or after creating the level where it can be awaited
-        console.log(config_path)
-        this.load_config(config_path);
+        //console.log(config_path)
+        this.load(config_path);
 
     }
 }

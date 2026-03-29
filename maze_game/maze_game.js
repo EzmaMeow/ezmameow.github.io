@@ -61,7 +61,7 @@ export class Maze_Game extends Game {
 				if (this.game_started && !this.is_loading) {
 					this.is_loading = true
 					this.signal_state_changed.emit();
-					this.level.load_config('./data/test_level.json'); //okay seem there may be a data.length limit or need to handle it in parts
+					this.level.load('./data/test_level.json'); //okay seem there may be a data.length limit or need to handle it in parts
 					//also need to make sure the physics bodys are removed
 				}
 			}
@@ -229,7 +229,7 @@ export class Maze_Game extends Game {
 		camera = new PerspectiveCamera(50, canvas_body.clientWidth / canvas_body.clientHeight, 0.001, 32)
 	) {
 		super(renderer, camera);
-		this.level = new Maze_Level(canvas, this.world, 'data/default_level.json');
+		this.level = new Maze_Level(this.world, 'data/default_level.json');
 		const level = this.level;
 		this.scene.add(this.level);
 		this.scene.background = new Color(0x444444);
@@ -257,7 +257,7 @@ export class Maze_Game extends Game {
 			touch_start_x: 0.0,
 			touch_start_y: 0.0
 		};
-		this.level.signal_ready.connect(() => this.on_ready())
+		this.level.readySignal.connect(() => this.on_ready())
 		//this.level.level_image.on_ready = () => {
 		//	this.level.build()
 		//	startGame(this);

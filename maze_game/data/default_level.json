@@ -5,8 +5,8 @@
         "y": 3,
         "z": 3
     },
-    "background":"color::#000000",
-    "fog":{"type":"exp2","color":"color::#0a0a0a","density":"0.1" },
+    "background":"color::#0a0a0a",
+    "fog":{"type":"exp2","color":"#0a0a0a","density":"0.1" },
     "textures": {
         "default": {
             "texture": "assets/texture.png",

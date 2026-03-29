@@ -88,8 +88,13 @@ export function get_step_direction(start, end, target = new Vector3()) {
     )
 }
 
-//may need to use arrays if vectors have a cost
+//may need to use arrays if vectors have a greater cost
 //also could try yeild, but not use to using such things
+//may remake it in vector math or another math lib
+//but with generic vector object and vector math functions
+//it would still return an array of objects (maybe try to have a vector class passed
+//if they need to be a certain type)
+//also may need to make a yeild version, yet it may be better to control the start and end
 export function line_supercover(start, end) {
     const start_floored = start.clone().floor();
     const end_floored = end.clone().floor();
@@ -169,6 +174,7 @@ export function is_vector_valid(vector) {
     return false;
 }
 
+//remade and moved to lib/vector_math
 export function get_forward_direction(body, target = new Vec3(0.0, 0.0, 0.0), forward_vector = VEC3.FORWARD) {
     body.quaternion.vmult(forward_vector, target)
     target.normalize();
