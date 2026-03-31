@@ -4,7 +4,7 @@ import * as Game_Utils from './game_utility.js'
 import * as CANNON from "https://esm.sh/cannon-es";
 import { Resource_Manager } from './resource_manager.js'
 import { Level } from './level.js'
-import { Signal } from './game_core.js'
+import { Signal } from './lib/reactive_classes.js'
 import { Canvas_Image_Buffer } from './lib/canvas_image_buffer.js'
 import { NavigationGrid3D } from './lib/navigation_grid_3d.js'
 import { Registry } from './lib/registry.js'

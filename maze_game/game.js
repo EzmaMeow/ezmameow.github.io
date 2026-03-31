@@ -118,6 +118,7 @@ export class Game {
     constructor(renderer,camera) {
         this.renderer = renderer;
         this.camera = camera
+        //todo: make sure to rename this correctly when level and scene merge
         this.scene.addEventListener('childadded', (e) => this.connect_object(e));
         this.scene.addEventListener('childremoved', (e) => this.disconnect_object(e))
     }

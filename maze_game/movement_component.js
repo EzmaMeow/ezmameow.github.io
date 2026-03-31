@@ -1,7 +1,7 @@
 import { Vec3, Ray, Quaternion, AABB } from "https://esm.sh/cannon-es";
 import { Controller } from './controller.js'
 import { VEC3, get_forward_direction } from './game_utility.js'
-import { Signal } from './game_core.js'
+import { Signal } from './lib/reactive_classes.js'
 import { rotateQuaternion } from './lib/vector_math.js'
 
 export class Movement_Component {
@@ -40,19 +40,21 @@ export class Movement_Component {
     #contact_normal = new Vec3();
     #velocity_change = new Vec3();
     //NOTE: controller will have signals such as action(jump) that need to be manage. some actions the player or other systems will manage
+    //TODO: decide on allowing a null controller. an default is safer than none though
+    //NOTE TODO: The signal_action should not directly be bind to jump
     #controller;
     get controller() {
         if (!this.#controller) {
             this.#controller = new Controller();
-            this.controller.signal_action.connect(() => this.jump());
+            this.controller.signal_action.connect((action, data) => this.on_action(action, data));
         }
         return this.#controller
     }
     set controller(new_controller) {
         const old_controller = this.#controller;
         this.#controller = new_controller;
-        if (this.#controller) { this.#controller.signal_action.connect(() => this.jump()); }
-        if (old_controller) { old_controller.signal_action.disconnect(() => old_controller.jump()); }
+        if (this.#controller) { this.#controller.signal_action.connect((action, data) => this.on_action(action, data)); }
+        if (old_controller) { old_controller.signal_action.disconnect((action, data) => old_controller.on_action(action, data)); }
     }
     get_speed() {
         return this.#max_speed * this.controller.states.speed * this.speed_mod * (this.is_on_ground() ? 1.0 : 0.25);//too much speed in the air causes odd long grabbling hops. 
@@ -66,6 +68,11 @@ export class Movement_Component {
         //on_ground is set when there is a ground colsion, my be better to call it jumpped. the other 
         //checks will make sure it not falling or accending
         return this.movement_state & Movement_Component.MOVEMENT_STATE.GROUNDED;
+    }
+    on_action(action, data){
+        if (action === this.controller.ACTIONS.JUMP){
+            this.jump();
+        }
     }
     jump() {
         if (this.is_on_ground()) {

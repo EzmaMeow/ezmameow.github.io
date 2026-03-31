@@ -128,6 +128,14 @@ export class NavigationGrid3D {
         else { console.log('NavigationMap position needs to be a number or a vector3 like object.') }
 
         this.#cellConnections = new Int32Array(width * height * depth)
+        //note 128x128x4 cells may be fine, but should think about chunking it by 32 so large area
+        //can still be managed. 
+        // NOTE: could create one of this for each chuck and have the nav system handle them all,
+        //but would require that system to be built also may not need metadata here (though it be easier to managed)
+        //NOTE: may not store metadata here. the data should be fecth by the nav system perhaps overrided by the level 
+        //so it returns what the level has for the cell. the cell may be a mesh with a nav mesh and navigation info
+        //worst it could be a sublevel that uses it own nav grid that may contain more cells. aka may need to have it support
+        //chaining, though chainig of level is not in the scope of this project
     }
 
     constructor(width = 0, height = 0, depth = 0, position = 0, cellSize = 1.0) {
