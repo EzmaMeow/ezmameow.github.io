@@ -5,8 +5,8 @@
         "y": 3,
         "z": 3
     },
-    "background":"color::#0a0a0a",
-    "fog":{"type":"exp2","color":"#0a0a0a","density":"0.1" },
+    "background":"color::#ec5bd2",
+    "fog":{"type":"exp2","color":"#ec5bd2","density":"0.1" },
     "textures": {
         "default": {
             "texture": "assets/texture.png",
@@ -18,7 +18,7 @@
     },
     "materials": {
         "default_wall": {
-            "color": "#6a7a8c",
+            "color": "#4aa1ca",
             "map": "texture::texture",
             "normalMap": "texture::normal",
             "metalnessMap": "texture::specular",
@@ -26,7 +26,7 @@
             "lightmap": "texture::lightmap"
         },
         "default_floor": {
-            "color": "#7f7f7f",
+            "color": "#470375",
             "map": "texture::texture",
             "normalMap": "texture::normal",
             "metalnessMap": "texture::specular",
@@ -34,12 +34,7 @@
             "lightmap": "texture::lightmap"
         },
         "default_ceil": {
-            "color": "#6f7d6f",
-            "map": "texture::texture",
-            "normalMap": "texture::normal",
-            "metalnessMap": "texture::specular",
-            "aoMap": "texture::ao",
-            "lightmap": "texture::lightmap"
+            "color": "#ec5bd2"
         }
     },
     "objects": {

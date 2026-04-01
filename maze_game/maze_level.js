@@ -299,7 +299,6 @@ export class Maze_Level extends Level {
                         }
                         mask &= mask - 1;
                     }
-                    console.log(navigation_grid.getCellPosition(cell_index, cell_position.clone()), mask)
                 }
             }
         }
@@ -369,7 +368,7 @@ export class Maze_Level extends Level {
     //NOTE: MAY NEED TO RESERVER 4 FLAGS FOR this.maze_nav[pixel_info.id] to solve egde cases
 
     //this will also handle ramps since they are batch together with floor
-    create_floor(pixel_info, cell_type, pixels_data, floor_geometries, floor_body, height) {
+    create_floor(pixel_info, cell_type, pixels_data, floor_geometries, ceil_geometries, floor_body, height) {
         const up_cell_type = this.get_cell_type(pixel_info, height + 1);
         const down_cell_type = this.get_cell_type(pixel_info, height - 1);
         if (this.has_floor(cell_type.type) || this.is_wall(down_cell_type.type) || this.is_bounds(down_cell_type.type) || this.has_ceil(down_cell_type.type)) {
@@ -388,7 +387,7 @@ export class Maze_Level extends Level {
         if (this.has_ceil(cell_type.type) || this.is_wall(up_cell_type.type) || this.is_bounds(up_cell_type.type) || this.has_floor(up_cell_type.type)) {
             const face = new PlaneGeometry(this.#cell_size.x, this.#cell_size.z).rotateX(Math.PI / 2);
             face.translate(pixel_info.x * this.#cell_size.x, this.#cell_size.y * height + this.#cell_size.y / 2.0, pixel_info.y * this.#cell_size.z);
-            floor_geometries.push(face);
+            ceil_geometries.push(face);
             //NOTE also checking if floor above
             if (!this.is_wall(up_cell_type.type) || this.is_bounds(up_cell_type.type)) {
                 floor_body.addShape(
@@ -412,7 +411,7 @@ export class Maze_Level extends Level {
             face_up.translate(pixel_info.x * this.#cell_size.x, this.#cell_size.y * height, pixel_info.y * this.#cell_size.z);
             face_down.translate(pixel_info.x * this.#cell_size.x, this.#cell_size.y * height, pixel_info.y * this.#cell_size.z);
             floor_geometries.push(face_up);
-            floor_geometries.push(face_down);
+            ceil_geometries.push(face_down);
             const ramp_shape = new CANNON.Box(new CANNON.Vec3(this.#cell_size.x / 2.0, 0.01, Math.sqrt(this.#cell_size.z * this.#cell_size.z + this.#cell_size.y * this.#cell_size.y) / 2.0))
             floor_body.addShape(
                 ramp_shape,
@@ -488,6 +487,7 @@ export class Maze_Level extends Level {
 
             const wall_geometries = [];
             const floor_geometries = [];
+            const ceil_geometries = [];
 
 
             const wall_body = new CANNON.Body({
@@ -526,7 +526,7 @@ export class Maze_Level extends Level {
                         this.navigation_grid.setCellConnFlag(pixel_info.x, i, pixel_info.y, NavigationGrid3D.CONN_DIR.OPEN)
                         //probably can add cell type
                         this.create_wall(pixel_info, cell_type, pixels_data, wall_geometries, wall_body, i);
-                        this.create_floor(pixel_info, cell_type, pixels_data, floor_geometries, floor_body, i)
+                        this.create_floor(pixel_info, cell_type, pixels_data, floor_geometries, ceil_geometries, floor_body, i)
                     }
                 }
             }, segment_id * size, Math.min(this.level_image.data.length, (segment_id + 1) * size), pixel_info);
@@ -535,9 +535,11 @@ export class Maze_Level extends Level {
             }
             const maze_wall_geo = wall_geometries.length > 0 ? BufferGeometryUtils.mergeGeometries(wall_geometries, true) : null;
             const maze_floor_geo = floor_geometries.length > 0 ? BufferGeometryUtils.mergeGeometries(floor_geometries, true) : null;
+            const maze_ceil_geo = ceil_geometries.length > 0 ? BufferGeometryUtils.mergeGeometries(ceil_geometries, true) : null;
 
             this.resources.set_geometry('maze_walls', maze_wall_geo);
             this.resources.set_geometry('maze_floors', maze_floor_geo);
+            this.resources.set_geometry('maze_ceil', maze_ceil_geo);
 
             for (const geometry of wall_geometries) {
                 geometry.dispose();
@@ -545,8 +547,12 @@ export class Maze_Level extends Level {
             for (const geometry of floor_geometries) {
                 geometry.dispose();
             }
+            for (const geometry of ceil_geometries) {
+                geometry.dispose();
+            }
             this.create_maze_segment(maze_wall_geo, this.default_wall_mat, wall_body);
             this.create_maze_segment(maze_floor_geo, this.default_floor_mat, floor_body);
+            this.create_maze_segment(maze_ceil_geo, this.default_ceil_mat);
             if ((segment_id + 1) * size < this.level_image.data.length) {
                 segment_id += 1;
                 requestAnimationFrame(step);
@@ -704,6 +710,7 @@ export class Maze_Level extends Level {
     }
     resources_loaded() {
         this.resources.signal_load_end.disconnect(() => this.resources_loaded());
+        this.resources.dispose_materials(Resource_Manager.FILTERS.ALL)
         if (this.config && this.config.materials) {
             for (const [material_id, material_data] of Object.entries(this.config.materials)) {
                 for (const [property, value_data] of Object.entries(material_data)) {
