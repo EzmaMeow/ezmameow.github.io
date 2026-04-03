@@ -30,8 +30,6 @@ export class Navigation {
     //so it may be a map or a large grid size mesh
     meshes = new Map();
 
-
-
     static getGridCoords(
         x = 0.0, y = 0.0, z = 0.0,
         targetVector = { x: 0, y: 0, z: 0 },
@@ -98,6 +96,8 @@ export class Navigation {
             endX = 0.0, endY = 0.0, endZ = 0.0,
             options = {}
         )
+        //NOTE: start and end would be world. would need to convert to coords when it need to acess the cell
+        //this can be done by x%gridSize.x but also need to adjust for cellsize so may just need to multiply gridsize and cellsize
         const point = { x: startX, y: startY, z: startZ }
         //instead of looping all grids, we should start the pathing logic and then loop the grids untill a vaild point is found
         //since it be easier to check if in bounds per point instead of trying to map it...unless it is chunked but that requiring
@@ -105,6 +105,8 @@ export class Navigation {
         onEnd(points)
     }
     //not static since it needs to be overridden per instance
+    //NOTE: the grid can be static (though might not) since the grid is forced chunked now
+    //also pathing would probably get grid at point
     getNavigationGrids(
         startX = 0.0, startY = 0.0, startZ = 0.0,
         endX = 0.0, endY = 0.0, endZ = 0.0,

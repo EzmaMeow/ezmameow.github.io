@@ -13,6 +13,10 @@ export class NavigationGrid3D {
         STATE_1: 1 << 27, STATE_2: 1 << 28, STATE_3: 1 << 29, STATE_4: 1 << 30, //can have 1 << 31(will flip to negaive), but keeping it at 30. also state is helper flags to skip certain loop ups
     };
     static get CONN_DIR() { return this.#CONN_DIR; }
+    static #CONN_DIR_NAME = Object.fromEntries(
+        Object.entries(this.CONN_DIR).map(([name, value]) => [value, name])
+    );
+    static get CONN_DIR_NAME() { return this.#CONN_DIR_NAME; }
     static #CONN_DIR_TYPE = { SAME: 0, UP: 1, DOWN: 2 }
     static get CONN_DIR_TYPE() { return this.#CONN_DIR_TYPE; }
     static #DIRECTION = {
@@ -20,6 +24,8 @@ export class NavigationGrid3D {
     }
     static get DIRECTION() { return this.#DIRECTION; }
     static #DIR_OFFSET = [3, 11, 19];
+    static #CONN_DECODE_TYPE = { FLAG: 0, NAME: 1, DIR_VECTOR: 2 }
+    static get CONN_DECODE_TYPE() { return this.#CONN_DECODE_TYPE; }
 
     //where it exists in the world
     #position; get position() { return this.#position; }
@@ -30,6 +36,28 @@ export class NavigationGrid3D {
     #height; get height() { return this.#height; }
     #depth; get depth() { return this.#depth; }
 
+    static getConnDirVector(flag, targetVector = { x: 0, y: 0, z: 0 }) {
+        //may or may not want to add this as a static const
+        //const flag = mask & -mask;
+        const flag_name = this.CONN_DIR_NAME[flag];
+        if (flag_name.includes("UP")) { targetVector.y = 1 }
+        else if (flag_name.includes("DOWN")) { targetVector.y = -1 }
+        else { targetVector.y = 0 }
+        if (flag_name.includes("NORTH")) { targetVector.z = -1 }
+        else if (flag_name.includes("SOUTH")) { targetVector.z = 1 }
+        else { targetVector.z = 0 }
+        if (flag_name.includes("EAST")) { targetVector.x = 1 }
+        else if (flag_name.includes("WEST")) { targetVector.x = -1 }
+        else { targetVector.x = 0 }
+        //normalize the vector
+        const len = Math.hypot(targetVector.x, targetVector.y, targetVector.z);
+        if (len > 0) {
+            targetVector.x /= len;
+            targetVector.y /= len;
+            targetVector.z /= len;
+        }
+        return targetVector;
+    }
     static getConnDir(type = 0, direction = 0) {
         if (type < 0 || type >= this.#DIR_OFFSET.length) {
             throw new Error(`Invalid type: ${type}. Valid types: ${this.CONN_DIR_TYPE.join(", ")}`);
@@ -56,6 +84,34 @@ export class NavigationGrid3D {
             return 1 << (27 + id)
         }
         //returns the extra flag states
+    }
+    //return the direction keys they are set in the provided bitflag
+    //this is to make it a bit easier to read as well as a way to loop true values
+    static decodeConnDirFlags(flags, decide_type = this.CONN_DECODE_TYPE.NAME) {
+        const vaildFlags = [];
+        if (typeof flags !== 'number' || flags < 0) {
+            console.error("Bitmask must be a non-negative integer")
+            return vaildFlags 
+        }
+        //if (decide_type === this.CONN_DECODE_TYPE.NAME) {
+        //    return Object.keys(this.CONN_DIR).filter(flag => (flags & this.CONN_DIR[flag]) !== 0);
+        //}
+        let mask = flags
+        while (mask !== 0) {
+            const flag = mask & -mask;
+            if(decide_type === this.CONN_DECODE_TYPE.NAME){
+                vaildFlags.push(this.CONN_DIR_NAME[flag])
+            }
+            else if(decide_type === this.CONN_DECODE_TYPE.DIR_VECTOR){
+                vaildFlags.push(this.getConnDirVector(flag))
+            }
+            else{
+                vaildFlags.push(flag)
+            }
+            mask &= mask - 1;
+        }
+        return vaildFlags
+
     }
 
     #cellConnections; get cellConnections() { return this.#cellConnections; }
