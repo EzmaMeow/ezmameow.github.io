@@ -237,6 +237,8 @@ export class Maze_Game extends Game {
 		Maze_Game.scene = this.scene; //TODO: add cleanup for static scene and world incase abuses
 		Maze_Game.world = this.world;
 		Maze_Game.level = this.level;
+		const navigation = this.level.navigation
+		this.world.navigation = navigation
 		this.renderer = renderer//level.renderer;
 		//todo: remove all this.level and maze_game.level for Maze_Game.scene
 		this.renderer.setSize(canvas_body.clientWidth, canvas_body.clientHeight);
@@ -267,7 +269,7 @@ export class Maze_Game extends Game {
 		//};
 		this.level.add(player);
 
-		this.level.add(new Mouse())
+		this.level.add(new Mouse({navigation:navigation}))
 
 		console.log('meow adding events')
 		document.addEventListener("keydown", event => this.on_key_down(event));

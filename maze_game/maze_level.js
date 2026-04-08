@@ -197,11 +197,15 @@ export class Maze_Level extends Level {
         this.maze_segments.add(segment)
         if (segment.mesh) {
             segment.mesh.name = 'maze_segment_' + String(this.maze_segments.size - 1);
+            segment.mesh.position.x = this.#cell_size.x / 2.0;
             segment.mesh.position.y = this.#cell_size.y / 2.0;
+            segment.mesh.position.z = this.#cell_size.z / 2.0;
             this.add(segment.mesh);
         }
         if (body) {
             segment.body = body;
+            segment.body.position.x = this.#cell_size.x / 2.0;
+            segment.body.position.z = this.#cell_size.z / 2.0;
             this.world.addBody(segment.body)
         }
         return segment;
@@ -210,7 +214,13 @@ export class Maze_Level extends Level {
         //this is here incase the cell size changes
         for (const segment of this.maze_segments) {
             if (segment.mesh) {
+                segment.mesh.position.x = this.#cell_size.x / 2.0;
                 segment.mesh.position.y = this.#cell_size.y / 2.0;
+                segment.mesh.position.z = this.#cell_size.z / 2.0;
+            }
+            if (body) {
+                segment.body.position.x = this.#cell_size.x / 2.0;
+                segment.body.position.z = this.#cell_size.z / 2.0;
             }
         }
     }
@@ -285,7 +295,7 @@ export class Maze_Level extends Level {
                             navigation_grid.getCellPosition(cell_index, cell_position)
                             const arrow = new ArrowHelper(
                                 new Vector3(dir.x, dir.y, dir.z).normalize(),
-                                cell_position.clone().add(new Vector3(0, 1.5, 0)),
+                                cell_position.clone().add(new Vector3(this.#cell_size.x/2.0, 1.5, this.#cell_size.y/2.0)),
                                 1.5,
                                 arrow_color,
                                 0.3,
@@ -313,7 +323,7 @@ export class Maze_Level extends Level {
         const navigation_grid = Navigation.getGrid(pixel_info.x * this.navigation.cellSize.x, height * this.navigation.cellSize.y, pixel_info.y * this.navigation.cellSize.z, true)
         if (this.is_wall(north_cell_type.type) || this.is_bounds(north_cell_type.type)) {
             const face = new PlaneGeometry(this.#cell_size.z, this.#cell_size.y);
-            face.translate(pixel_info.x * this.#cell_size.x, this.#cell_size.y * height, pixel_info.y * this.#cell_size.z - this.#cell_size.x / 2.0);
+            face.translate(pixel_info.x * this.#cell_size.x, this.#cell_size.y * height, pixel_info.y * this.#cell_size.z - this.#cell_size.z / 2.0);
             wall_geometries.push(face);
         }
         else {
@@ -326,7 +336,7 @@ export class Maze_Level extends Level {
         const east_cell_type = this.get_cell_type(pixels_data[Maze_Level.DIRECTIONS.EAST], height);
         if (this.is_wall(east_cell_type.type) || this.is_bounds(east_cell_type.type)) {
             const face = new PlaneGeometry(this.#cell_size.x, this.#cell_size.y).rotateY(-Math.PI / 2);
-            face.translate(pixel_info.x * this.#cell_size.x + this.#cell_size.z / 2.0, this.#cell_size.y * height, pixel_info.y * this.#cell_size.z);
+            face.translate(pixel_info.x * this.#cell_size.x + this.#cell_size.x / 2.0, this.#cell_size.y * height, pixel_info.y * this.#cell_size.z);
             wall_geometries.push(face);
 
         }
@@ -339,7 +349,7 @@ export class Maze_Level extends Level {
         const south_cell_type = this.get_cell_type(pixels_data[Maze_Level.DIRECTIONS.SOUTH], height);
         if (this.is_wall(south_cell_type.type) || this.is_bounds(south_cell_type.type)) {
             const face = new PlaneGeometry(this.#cell_size.z, this.#cell_size.y).rotateY(Math.PI);
-            face.translate(pixel_info.x * this.#cell_size.x, this.#cell_size.y * height, pixel_info.y * this.#cell_size.z + this.#cell_size.x / 2.0);
+            face.translate(pixel_info.x * this.#cell_size.x, this.#cell_size.y * height, pixel_info.y * this.#cell_size.z + this.#cell_size.z / 2.0);
             wall_geometries.push(face);
 
         }
@@ -352,7 +362,7 @@ export class Maze_Level extends Level {
         const west_cell_type = this.get_cell_type(pixels_data[Maze_Level.DIRECTIONS.WEST], height);
         if (this.is_wall(west_cell_type.type) || this.is_bounds(west_cell_type.type)) {
             const face = new PlaneGeometry(this.#cell_size.x, this.#cell_size.y).rotateY(Math.PI / 2);
-            face.translate(pixel_info.x * this.#cell_size.x - this.#cell_size.z / 2.0, this.#cell_size.y * height, pixel_info.y * this.#cell_size.z);
+            face.translate(pixel_info.x * this.#cell_size.x - this.#cell_size.x / 2.0, this.#cell_size.y * height, pixel_info.y * this.#cell_size.z);
             wall_geometries.push(face);
         }
         else {
@@ -464,6 +474,9 @@ export class Maze_Level extends Level {
         //this.navigation_grid.initialize(this.level_image.image.width, 3, this.level_image.image.height, this.position.clone(), this.cell_size.clone())
         Navigation.clearGrids();
         Navigation.defaultInstance.cellSize = this.cell_size.clone();
+        //look like the grids are not aline. the arrows probably look fine since it not centering itself
+        //but it may be the level building that should change to be offset correctly
+
         //something is wrong with the chunking logic. need to check the nav_debug as well as make sure all the position logic in both nav and grid is correct
         //possible cause is the nav grid storing data in an array which might not mapping correctly in nav or debug
         //Navigation.defaultInstance.gridSize.x = this.level_image.image.width;
@@ -574,7 +587,7 @@ export class Maze_Level extends Level {
             this.world.addBody(this.north_bounds)
         }
         this.north_bounds.quaternion.setFromEuler(0, 0, 0)
-        this.north_bounds.position.z = -this.#cell_size.z / 2.0
+        //this.north_bounds.position.z = -this.#cell_size.z / 2.0
 
         if (!this.south_bounds) {
             this.south_bounds = new CANNON.Body({
@@ -584,7 +597,7 @@ export class Maze_Level extends Level {
             this.world.addBody(this.south_bounds)
         }
         this.south_bounds.quaternion.setFromEuler(Math.PI, 0, 0)
-        this.south_bounds.position.z = this.level_image.image.width * this.#cell_size.z - this.#cell_size.z / 2.0
+        this.south_bounds.position.z = this.level_image.image.width * this.#cell_size.z //- this.#cell_size.z / 2.0
 
         if (!this.west_bounds) {
             this.west_bounds = new CANNON.Body({
@@ -594,7 +607,7 @@ export class Maze_Level extends Level {
             this.world.addBody(this.west_bounds)
         }
         this.west_bounds.quaternion.setFromEuler(0, Math.PI / 2, 0)
-        this.west_bounds.position.x = -this.#cell_size.x / 2.0
+        //this.west_bounds.position.x = -this.#cell_size.x / 2.0
 
         if (!this.east_bounds) {
             this.east_bounds = new CANNON.Body({
@@ -604,7 +617,7 @@ export class Maze_Level extends Level {
             this.world.addBody(this.east_bounds)
         }
         this.east_bounds.quaternion.setFromEuler(0, -Math.PI / 2, 0)
-        this.east_bounds.position.x = this.level_image.image.height * this.#cell_size.x - this.#cell_size.x / 2.0
+        this.east_bounds.position.x = this.level_image.image.height * this.#cell_size.x// - this.#cell_size.x / 2.0
 
     }
     //ready() {

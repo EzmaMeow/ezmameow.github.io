@@ -91,7 +91,7 @@ export class NavigationGrid3D {
         const vaildFlags = [];
         if (typeof flags !== 'number' || flags < 0) {
             console.error("Bitmask must be a non-negative integer")
-            return vaildFlags 
+            return vaildFlags
         }
         //if (decide_type === this.CONN_DECODE_TYPE.NAME) {
         //    return Object.keys(this.CONN_DIR).filter(flag => (flags & this.CONN_DIR[flag]) !== 0);
@@ -99,13 +99,13 @@ export class NavigationGrid3D {
         let mask = flags
         while (mask !== 0) {
             const flag = mask & -mask;
-            if(decide_type === this.CONN_DECODE_TYPE.NAME){
+            if (decide_type === this.CONN_DECODE_TYPE.NAME) {
                 vaildFlags.push(this.CONN_DIR_NAME[flag])
             }
-            else if(decide_type === this.CONN_DECODE_TYPE.DIR_VECTOR){
+            else if (decide_type === this.CONN_DECODE_TYPE.DIR_VECTOR) {
                 vaildFlags.push(this.getConnDirVector(flag))
             }
-            else{
+            else {
                 vaildFlags.push(flag)
             }
             mask &= mask - 1;
@@ -115,7 +115,19 @@ export class NavigationGrid3D {
     }
 
     #cellConnections; get cellConnections() { return this.#cellConnections; }
-    getCellIndex(x, y, z) {
+    //NOTE these will use cell index since it easier to use as a key
+    #meshes = new Map(); get meshes() { return this.#meshes; }
+    #colliders = new Map(); get colliders() { return this.#colliders; }
+    //uses cell Coords
+    getCellIndex(x, y, z, isWorldPos = true) {
+        if (isWorldPos) {
+            //convert to cell cords
+            //since most stuff is stored by the index, there is little reason to need to create/manage vectors
+            x = Math.floor(x / this.cellSize.x)
+            y = Math.floor(y / this.cellSize.y)
+            z = Math.floor(z / this.cellSize.z)
+
+        }
         if (x < 0 || y < 0 || z < 0) { return -1 }
         if (x >= this.width || y >= this.height || z >= this.depth) { return -1 }
         return x + (y * this.width) + (z * this.width * this.height)
@@ -138,27 +150,47 @@ export class NavigationGrid3D {
         targetVector.z = (Math.floor(index / (this.width * this.height))) * this.cellSize.z + this.position.z;
         return targetVector
     }
+    //uses world position
     getCellConn(x, y, z) {
         const index = this.getCellIndex(x, y, z);
         if (index < 0) { return -1; }
         return this.cellConnections[index];
     }
+    //uses world position
     setCellConn(x, y, z, bitflag = 0) {
         const index = this.getCellIndex(x, y, z);
         if (index < 0) { return; }
         this.cellConnections[index] = bitflag;
     }
+    //uses world position
     setCellConnFlag(x, y, z, flag = 0) {
         const index = this.getCellIndex(x, y, z);
         if (index < 0) { return; }
         this.cellConnections[index] |= flag;
     }
+    //uses world position
     clearCellConnFlag(x, y, z, flag = 0) {
         const index = this.getCellIndex(x, y, z);
         if (index < 0) { return; }
         this.cellConnections[index] &= ~flag;
     }
-
+    randomPointInCell(cellIndex = 0, targetVector = { x: 0, y: 0, z: 0 }) {
+        //TODO: this shoul use nav mesh if provided else
+        //use the cell bounding box
+        //NOTE could use a number or a vector object called cell and type check to figure out what being used
+        this.getCellPosition(cellIndex, targetVector)
+        if (this.meshes.has(cellIndex)) {
+            console.log('random point in nav mesh is not added yet. (will use on the whole cell).')
+        }
+        //will not find a point on ground, would need to add a flag to set to cell 'ground' level or use another function to flatten it
+        //also means the point would ignore the object size
+        //TODO: should have a check to get a random point that also can fit. could get the radius of the object
+        //and reduse the size by that with `Math.random() * (max-radius) + radius`
+        targetVector.x += Math.random() * (this.cellSize.x);
+        targetVector.y += Math.random() * (this.cellSize.y);
+        targetVector.z += Math.random() * (this.cellSize.z);
+        return targetVector;
+    }
 
     initialize(width = this.width, height = this.height, depth = this.depth, position = this.position, cellSize = this.cellSize) {
         this.#width = width; this.#height = height; this.#depth = depth;
@@ -182,7 +214,8 @@ export class NavigationGrid3D {
             else { console.log('NavigationMap position needs to be an object with an x, y, and z properties.') }
         }
         else { console.log('NavigationMap position needs to be a number or a vector3 like object.') }
-
+        this.meshes.clear();
+        this.colliders.clear();
         this.#cellConnections = new Int32Array(width * height * depth)
         //note 128x128x4 cells may be fine, but should think about chunking it by 32 so large area
         //can still be managed. 
