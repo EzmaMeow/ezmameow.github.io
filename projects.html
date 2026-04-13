@@ -7,6 +7,9 @@
 	<meta name="viewport" content="width=device-width,initial-scale=1.0">
 	<title>Projects</title>
 	<link rel="stylesheet" href="styles.css">
+	<link rel="icon"
+		href="https://64.media.tumblr.com/7fcb7cc886a1fae28b412febb6df8ce3/b8f3aff7009fffbd-7c/s128x128u_c1/0b4ea6647bd836c5b010072f5b0bffdcf0ea1a89.pnj"
+		type="image/x-icon">
 </head>
 
 <body>
@@ -31,7 +34,7 @@
 				<div class="collapsible_toggle">
 					<p><b>Web Games</b></p>
 				</div>
-				
+
 				<div class="info_links collapsible_content">
 					<li><a href="https://ezmameow.github.io/maze_game/index.html">Maze Game Prototype</a></li>
 				</div>
@@ -41,9 +44,11 @@
 				<div class="collapsible_toggle">
 					<p><b>RPGMaker Games</b></p>
 				</div>
-				
+
 				<div class="info_links collapsible_content">
-					<li><a href="https://github.com/EzmaMeow/RPGMakerSniplets/tree/main/VX_Ace/Games/A_Hero_with_a_Tail">A Hero with a Tail</a></li>
+					<li><a
+							href="https://github.com/EzmaMeow/RPGMakerSniplets/tree/main/VX_Ace/Games/A_Hero_with_a_Tail">A
+							Hero with a Tail</a></li>
 				</div>
 			</div>
 		</div>
@@ -51,22 +56,9 @@
 
 </body>
 
-<script>
-	// Get the button and content
-	const collapsibles = document.querySelectorAll(".collapsible");
-	console.log(collapsibles)
-	collapsibles.forEach(collapsible => {
-		const collapsible_toggle = collapsible.querySelector(".collapsible_toggle");
-		collapsible_toggle.addEventListener("click", () => {
-			const contents = collapsible.querySelectorAll(".collapsible_content");
-			console.log(collapsible, contents)
-			contents.forEach(content => {
-				console.log(content, content.hidden)
-				content.hidden = !content.hidden;
-			});
-		});
-	});
-
+<script type="module">
+	import { Collapsibles } from './scripts/collapsibles.js'
+	Collapsibles.register()
 </script>
 
 </html>
