@@ -26,7 +26,8 @@ export class Mouse extends Character {
                     const navGrid = this.navigation.constructor.getGrid(this.position.x, this.position.y, this.position.z, false, this.navigation)
                     if (navGrid) {
                         //NOTE: should store the point and get the direction to it as well as check of it close enough to trigger a state change
-                        const randomPoint = navGrid.randomPointInCell(navGrid.getCellIndex(this.position.x, this.position.y, this.position.z), this.ai_state.move_to)
+                        const randomPoint = navGrid.randomPointInCell(navGrid.getCellIndex(this.position.x, this.position.y, this.position.z), this.agentHalfsize, this.ai_state.move_to)
+
                     }
                     else {
 
@@ -90,6 +91,7 @@ export class Mouse extends Character {
             0.15
         );
         this.add(this.direction_arrow);
+        this.agentHalfsize = new Vector3(this.collsion_radius, this.collsion_height/2.0, this.collsion_radius)
     }
 
 }

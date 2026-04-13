@@ -174,7 +174,8 @@ export class NavigationGrid3D {
         if (index < 0) { return; }
         this.cellConnections[index] &= ~flag;
     }
-    randomPointInCell(cellIndex = 0, targetVector = { x: 0, y: 0, z: 0 }) {
+    randomPointInCell(cellIndex = 0, agentHalfsize = { x: 0, y: 0, z: 0 }, targetVector = { x: 0, y: 0, z: 0 }) {
+        //NOTE TODO agentHalfsize should be an agent object instead so more information could be attachec
         //TODO: this shoul use nav mesh if provided else
         //use the cell bounding box
         //NOTE could use a number or a vector object called cell and type check to figure out what being used
@@ -186,9 +187,9 @@ export class NavigationGrid3D {
         //also means the point would ignore the object size
         //TODO: should have a check to get a random point that also can fit. could get the radius of the object
         //and reduse the size by that with `Math.random() * (max-radius) + radius`
-        targetVector.x += Math.random() * (this.cellSize.x);
-        targetVector.y += Math.random() * (this.cellSize.y);
-        targetVector.z += Math.random() * (this.cellSize.z);
+        targetVector.x += Math.random() * (this.cellSize.x - agentHalfsize.x) + agentHalfsize.x;
+        targetVector.y += Math.random() * (this.cellSize.y - agentHalfsize.y) + agentHalfsize.y;
+        targetVector.z += Math.random() * (this.cellSize.z - agentHalfsize.z) + agentHalfsize.z;
         return targetVector;
     }
 
