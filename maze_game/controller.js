@@ -1,5 +1,5 @@
 import { Vec3 } from "https://esm.sh/cannon-es";
-import { Signal } from './lib/reactive_classes.js'
+import { Signal } from '/lib/reactive_classes.js'
 //this handles controlling a character either fixed, ai, or player controlled
 
 export class Controller{

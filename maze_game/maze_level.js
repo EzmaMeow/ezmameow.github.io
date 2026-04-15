@@ -4,11 +4,11 @@ import * as Game_Utils from './game_utility.js'
 import * as CANNON from "https://esm.sh/cannon-es";
 import { Resource_Manager } from './resource_manager.js'
 import { Level } from './level.js'
-import { Signal } from './lib/reactive_classes.js'
-import { Canvas_Image_Buffer } from './lib/canvas_image_buffer.js'
-import { NavigationGrid3D } from './lib/navigation_grid_3d.js'
-import { Navigation } from './lib/navigation.js'
-import { Registry } from './lib/registry.js'
+import { Signal } from '/lib/reactive_classes.js'
+import { Canvas_Image_Buffer } from '/lib/canvas_image_buffer.js'
+import { NavigationGrid3D } from '/lib/navigation/navigation_grid_3d.js'
+import { Navigation } from '/lib/navigation/navigation.js'
+import { Registry } from '/lib/registry.js'
 
 
 export class Maze_Level extends Level {
@@ -295,7 +295,7 @@ export class Maze_Level extends Level {
                             navigation_grid.getCellPosition(cell_index, cell_position)
                             const arrow = new ArrowHelper(
                                 new Vector3(dir.x, dir.y, dir.z).normalize(),
-                                cell_position.clone().add(new Vector3(this.#cell_size.x/2.0, 1.5, this.#cell_size.y/2.0)),
+                                cell_position.clone().add(new Vector3(this.#cell_size.x / 2.0, 1.5, this.#cell_size.y / 2.0)),
                                 1.5,
                                 arrow_color,
                                 0.3,
@@ -329,7 +329,7 @@ export class Maze_Level extends Level {
         else {
             if (!(Maze_Level.FLAGS.RAMP & north_cell_type.type || Maze_Level.FLAGS.RAMP & cell_type.type)) {
                 //const navigation_grid = Navigation.getGrid(pixel_info.x * Navigation.defaultInstance.cellSize.x, height * Navigation.defaultInstance.cellSize.y, pixel_info.y * Navigation.defaultInstance.cellSize.z, true)
-                navigation_grid.setCellConnFlag(pixel_info.x % this.navigation.gridSize.x, height % this.navigation.gridSize.y, pixel_info.y % this.navigation.gridSize.z, NavigationGrid3D.CONN_DIR.NORTH)
+                navigation_grid.setCellConnFlag(pixel_info.x * this.navigation.cellSize.x, height * this.navigation.cellSize.y, pixel_info.y * this.navigation.cellSize.z, NavigationGrid3D.CONN_DIR.NORTH)
                 //this.navigation_grid.setCellConnFlag(pixel_info.x, height, pixel_info.y, NavigationGrid3D.CONN_DIR.NORTH)
             }
         }
@@ -343,7 +343,7 @@ export class Maze_Level extends Level {
         else {
             if (!(Maze_Level.FLAGS.RAMP & east_cell_type.type || Maze_Level.FLAGS.RAMP & cell_type.type)) {
                 //const navigation_grid = Navigation.getGrid(pixel_info.x * Navigation.defaultInstance.cellSize.x, height * Navigation.defaultInstance.cellSize.y, pixel_info.y * Navigation.defaultInstance.cellSize.z, true)
-                navigation_grid.setCellConnFlag(pixel_info.x % this.navigation.gridSize.x, height % this.navigation.gridSize.y, pixel_info.y % this.navigation.gridSize.z, NavigationGrid3D.CONN_DIR.EAST)
+                navigation_grid.setCellConnFlag(pixel_info.x * this.navigation.cellSize.x, height * this.navigation.cellSize.y, pixel_info.y * this.navigation.cellSize.z, NavigationGrid3D.CONN_DIR.EAST)
             }
         }
         const south_cell_type = this.get_cell_type(pixels_data[Maze_Level.DIRECTIONS.SOUTH], height);
@@ -356,7 +356,7 @@ export class Maze_Level extends Level {
         else {
             if (!(Maze_Level.FLAGS.RAMP & south_cell_type.type || Maze_Level.FLAGS.RAMP & cell_type.type)) {
                 //const navigation_grid = Navigation.getGrid(pixel_info.x * Navigation.defaultInstance.cellSize.x, height * Navigation.defaultInstance.cellSize.y, pixel_info.y * Navigation.defaultInstance.cellSize.z, true)
-                navigation_grid.setCellConnFlag(pixel_info.x % this.navigation.gridSize.x, height % this.navigation.gridSize.y, pixel_info.y % this.navigation.gridSize.z, NavigationGrid3D.CONN_DIR.SOUTH)
+                navigation_grid.setCellConnFlag(pixel_info.x * this.navigation.cellSize.x, height * this.navigation.cellSize.y, pixel_info.y * this.navigation.cellSize.z, NavigationGrid3D.CONN_DIR.SOUTH)
             }
         }
         const west_cell_type = this.get_cell_type(pixels_data[Maze_Level.DIRECTIONS.WEST], height);
@@ -368,7 +368,7 @@ export class Maze_Level extends Level {
         else {
             if (!(Maze_Level.FLAGS.RAMP & west_cell_type.type || Maze_Level.FLAGS.RAMP & cell_type.type)) {
 
-                navigation_grid.setCellConnFlag(pixel_info.x % this.navigation.gridSize.x, height % this.navigation.gridSize.y, pixel_info.y % this.navigation.gridSize.z, NavigationGrid3D.CONN_DIR.WEST)
+                navigation_grid.setCellConnFlag(pixel_info.x * this.navigation.cellSize.x, height * this.navigation.cellSize.y, pixel_info.y * this.navigation.cellSize.z, NavigationGrid3D.CONN_DIR.WEST)
             }
         }
     }
@@ -388,7 +388,7 @@ export class Maze_Level extends Level {
         else {
             if (!(Maze_Level.FLAGS.RAMP & down_cell_type.type || Maze_Level.FLAGS.RAMP & cell_type.type)) {
                 //const navigation_grid = Navigation.getGrid(pixel_info.x*Navigation.defaultInstance.cellSize.x, height*Navigation.defaultInstance.cellSize.y, pixel_info.y*Navigation.defaultInstance.cellSize.z,true)
-                navigation_grid.setCellConnFlag(pixel_info.x % this.navigation.gridSize.x, height % this.navigation.gridSize.y, pixel_info.y % this.navigation.gridSize.z, NavigationGrid3D.CONN_DIR.DOWN)
+                navigation_grid.setCellConnFlag(pixel_info.x * this.navigation.cellSize.x, height * this.navigation.cellSize.y, pixel_info.y * this.navigation.cellSize.z, NavigationGrid3D.CONN_DIR.DOWN)
             }
         }
         //if (this.is_wall(pixel_info, i + 1)) {
@@ -407,7 +407,7 @@ export class Maze_Level extends Level {
         else {
             if (!(Maze_Level.FLAGS.RAMP & up_cell_type.type || Maze_Level.FLAGS.RAMP & cell_type.type)) {
 
-                navigation_grid.setCellConnFlag(pixel_info.x % this.navigation.gridSize.x, height % this.navigation.gridSize.y, pixel_info.y % this.navigation.gridSize.z, NavigationGrid3D.CONN_DIR.UP)
+                navigation_grid.setCellConnFlag(pixel_info.x * this.navigation.cellSize.x, height * this.navigation.cellSize.y, pixel_info.y * this.navigation.cellSize.z, NavigationGrid3D.CONN_DIR.UP)
             }
         }
 
@@ -440,10 +440,10 @@ export class Maze_Level extends Level {
                     else {
                         //setting connection of this cell open in its upper direction
                         //let navigation_grid = Navigation.getGrid(pixel_info.x*Navigation.defaultInstance.cellSize.x, height*Navigation.defaultInstance.cellSize.y, pixel_info.y*Navigation.defaultInstance.cellSize.z,true)
-                        navigation_grid.setCellConnFlag(pixel_info.x % this.navigation.gridSize.x, height % this.navigation.gridSize.y, pixel_info.y % this.navigation.gridSize.z, NavigationGrid3D.getConnDir(NavigationGrid3D.CONN_DIR_TYPE.UP, cell_type.variation * 2 + 1))
+                        navigation_grid.setCellConnFlag(pixel_info.x * this.navigation.cellSize.x, height * this.navigation.cellSize.y, pixel_info.y * this.navigation.cellSize.z, NavigationGrid3D.getConnDir(NavigationGrid3D.CONN_DIR_TYPE.UP, cell_type.variation * 2 + 1))
                         //setting uppder direction to point down in the opposite direction
                         const up_forward_navigation_grid = Navigation.getGrid(up_forward_cell_type.pixel_info.x * this.navigation.cellSize.x, up_forward_cell_type.height * this.navigation.cellSize.y, up_forward_cell_type.pixel_info.y * this.navigation.cellSize.z, true)
-                        up_forward_navigation_grid.setCellConnFlag(up_forward_cell_type.pixel_info.x % this.navigation.gridSize.x, up_forward_cell_type.height % this.navigation.gridSize.y, up_forward_cell_type.pixel_info.y % this.navigation.gridSize.z, NavigationGrid3D.getConnDir(NavigationGrid3D.CONN_DIR_TYPE.DOWN, (cell_type.variation * 2 + 5)))
+                        up_forward_navigation_grid.setCellConnFlag(up_forward_cell_type.pixel_info.x * this.navigation.cellSize.x, up_forward_cell_type.height * this.navigation.cellSize.y, up_forward_cell_type.pixel_info.y * this.navigation.cellSize.z, NavigationGrid3D.getConnDir(NavigationGrid3D.CONN_DIR_TYPE.DOWN, (cell_type.variation * 2 + 5)))
                     }
                 }
             }
@@ -452,17 +452,17 @@ export class Maze_Level extends Level {
             if (!this.is_wall(back_cell_type.type) && !this.is_bounds(back_cell_type.type)) {
                 //if back direction is not blocked, add a conection in both directions
                 //let navigation_grid = Navigation.getGrid(pixel_info.x*Navigation.defaultInstance.cellSize.x, height*Navigation.defaultInstance.cellSize.y, pixel_info.y*Navigation.defaultInstance.cellSize.z,true)
-                navigation_grid.setCellConnFlag(pixel_info.x % this.navigation.gridSize.x, height % this.navigation.gridSize.y, pixel_info.y % this.navigation.gridSize.z, NavigationGrid3D.getConnDir(NavigationGrid3D.CONN_DIR_TYPE.SAME, cell_type.variation * 2 + 5))
+                navigation_grid.setCellConnFlag(pixel_info.x * this.navigation.cellSize.x, height * this.navigation.cellSize.y, pixel_info.y * this.navigation.cellSize.z, NavigationGrid3D.getConnDir(NavigationGrid3D.CONN_DIR_TYPE.SAME, cell_type.variation * 2 + 5))
                 const back_navigation_grid = Navigation.getGrid(back_cell_type.pixel_info.x * this.navigation.cellSize.x, back_cell_type.height * this.navigation.cellSize.y, back_cell_type.pixel_info.y * this.navigation.cellSize.z, true)
-                back_navigation_grid.setCellConnFlag(back_cell_type.pixel_info.x % this.navigation.gridSize.x, back_cell_type.height % this.navigation.gridSize.y, back_cell_type.pixel_info.y % this.navigation.gridSize.z, NavigationGrid3D.getConnDir(NavigationGrid3D.CONN_DIR_TYPE.SAME, cell_type.variation * 2 + 1))
+                back_navigation_grid.setCellConnFlag(back_cell_type.pixel_info.x * this.navigation.cellSize.x, back_cell_type.height * this.navigation.cellSize.y, back_cell_type.pixel_info.y * this.navigation.cellSize.z, NavigationGrid3D.getConnDir(NavigationGrid3D.CONN_DIR_TYPE.SAME, cell_type.variation * 2 + 1))
             }
             //ignoring ramps above since dealing with that odd space would be difficult without another level of nav data to state how the exits are connected
             if (!this.has_floor(up_cell_type.type) && !this.has_ceil(cell_type.type) && !(Maze_Level.FLAGS.RAMP & up_cell_type.type)) {
                 //adding up connection to this cell and down for the cell above
                 //let navigation_grid = Navigation.getGrid(pixel_info.x*Navigation.defaultInstance.cellSize.x, height*Navigation.defaultInstance.cellSize.y, pixel_info.y*Navigation.defaultInstance.cellSize.z,true)
-                navigation_grid.setCellConnFlag(pixel_info.x % this.navigation.gridSize.x, height % this.navigation.gridSize.y, pixel_info.y % this.navigation.gridSize.z, NavigationGrid3D.getConnDir(NavigationGrid3D.CONN_DIR_TYPE.UP, 0))
+                navigation_grid.setCellConnFlag(pixel_info.x * this.navigation.cellSize.x, height * this.navigation.cellSize.y, pixel_info.y * this.navigation.cellSize.z, NavigationGrid3D.getConnDir(NavigationGrid3D.CONN_DIR_TYPE.UP, 0))
                 const up_navigation_grid = Navigation.getGrid(up_cell_type.pixel_info.x * this.navigation.cellSize.x, up_cell_type.height * this.navigation.cellSize.y, up_cell_type.pixel_info.y * this.navigation.cellSize.z, true)
-                up_navigation_grid.setCellConnFlag(up_cell_type.pixel_info.x % this.navigation.gridSize.x, up_cell_type.height % this.navigation.gridSize.y, up_cell_type.pixel_info.y % this.navigation.gridSize.z, NavigationGrid3D.getConnDir(NavigationGrid3D.CONN_DIR_TYPE.DOWN, 0))
+                up_navigation_grid.setCellConnFlag(up_cell_type.pixel_info.x * this.navigation.cellSize.x, up_cell_type.height * this.navigation.cellSize.y, up_cell_type.pixel_info.y * this.navigation.cellSize.z, NavigationGrid3D.getConnDir(NavigationGrid3D.CONN_DIR_TYPE.DOWN, 0))
             }
         }
     }
@@ -752,6 +752,7 @@ export class Maze_Level extends Level {
     level_image_ready() {
         console.log('started building', this)
         this.build()
+        console.log(this.navigation)
     }
     //TODO: make a generic level class that handles loading from a config and provide
     //loading logic flow as well as anything else the level needs

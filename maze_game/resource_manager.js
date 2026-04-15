@@ -1,6 +1,6 @@
 
 import { LoadingManager, TextureLoader } from 'three';
-import { Signal } from './lib/reactive_classes.js'
+import { Signal } from '/lib/reactive_classes.js'
 
 //this class stores and links resources for the game
 //as well as manage loading (and perhaps unloading) them

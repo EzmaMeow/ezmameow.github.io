@@ -2,7 +2,7 @@
 import { Vector3, Mesh, WebGLRenderer, PerspectiveCamera, Color, Box3Helper, SphereGeometry, MeshNormalMaterial, PlaneGeometry } from 'three';
 import * as Game_Utils from './game_utility.js'
 import * as CANNON from "https://esm.sh/cannon-es";
-import { Signal, State, Reactive_Object } from './lib/reactive_classes.js'
+import { Signal, State, Reactive_Object } from '/lib/reactive_classes.js'
 import { Physics_Object } from './physics_object.js'
 import { Game } from './game.js'
 import { Maze_Level } from './maze_level.js'
@@ -10,7 +10,7 @@ import { Resource_Manager } from './resource_manager.js'
 import { Input_Manager } from './input_manager.js'
 import { Player_Character } from './player_character.js'
 import { Controller } from './controller.js'
-import { getDirectionFromQuaternion } from './lib/vector_math.js'
+import { getDirectionFromQuaternion } from '/lib/vector_math.js'
 import { Mouse } from './characters/mouse.js'
 
 const canvas = document.getElementById("game");

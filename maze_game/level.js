@@ -1,6 +1,6 @@
 import { Scene, Fog, FogExp2} from 'three';
-import { Signal } from './lib/reactive_classes.js'
-import { Registry } from './lib/registry.js'
+import { Signal } from '/lib/reactive_classes.js'
+import { Registry } from '/lib/registry.js'
 //level is a scene that also hold a world (from cannon-es)
 //TODO: decide of this should include cannon world and create one if none was passed
 //or not be a scene and include a scene (but this require fallback logic if not a vaild scene or world)

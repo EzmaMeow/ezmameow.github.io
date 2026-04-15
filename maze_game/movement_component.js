@@ -1,8 +1,8 @@
 import { Vec3, Ray, Quaternion, AABB } from "https://esm.sh/cannon-es";
 import { Controller } from './controller.js'
 import { VEC3, get_forward_direction } from './game_utility.js'
-import { Signal } from './lib/reactive_classes.js'
-import { rotateQuaternion } from './lib/vector_math.js'
+import { Signal } from '/lib/reactive_classes.js'
+import { rotateQuaternion } from '/lib/vector_math.js'
 
 export class Movement_Component {
     //movement state is for additional state that can not be infered by velocity

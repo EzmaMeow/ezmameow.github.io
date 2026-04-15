@@ -42,9 +42,10 @@ Beside above, perhaps the rest should follow a more mainline declare order.
 # File structure:
 
 
--this dir will be treated as the scr and will hold the index.html (or similar triggering file).
+-The files will be located at two major dirs: The root `/` and locally `./`. Most will be acessed locally
+and will only use root for shared dir/files or if it need to acesses something unrelated to the project.
 
--Lib will be used for code not tied to the project.
+-Lib will be used for code not tied to the project. Note: this will be located at the root level.
 
 -(may add a thirdparty or some folder for three.js and cannon-es one day).
 
