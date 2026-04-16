@@ -1,0 +1,12 @@
+{
+    "default": [
+        {
+            "title": "<h1>Random Things About Ezma Meow</h1>",
+            "path": "data/posts/Random_Things_About_Ezma_Meow.html"
+        },
+        {
+            "title": "<h1>Random Projects Info (old)</h1>",
+            "path": "data/posts/Random_Projects_Info.html"
+        }
+    ]
+}

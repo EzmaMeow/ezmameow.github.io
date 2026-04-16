@@ -1,0 +1,12 @@
+{
+    "default": [
+        {
+            "title": "<h1>Web Games</h1>",
+            "text": "<p><li><a href='/maze_game/index.html'>Maze Game Prototype</a></li></p>"
+        },
+        {
+            "title": "<h1>RPGMaker Games</h1>",
+            "text": "<p><li><a href='https://github.com/EzmaMeow/RPGMakerSniplets/tree/main/VX_Ace/Games/A_Hero_with_a_Tail'>A Hero with a Tail</a></li></p>"
+        }
+    ]
+}

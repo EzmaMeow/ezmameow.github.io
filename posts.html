@@ -5,7 +5,7 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width,initial-scale=1.0">
-	<title>Projects</title>
+	<title>Ezma Meow About Page</title>
 	<link rel="stylesheet" href="styles.css">
 	<link rel="icon"
 		href="https://64.media.tumblr.com/7fcb7cc886a1fae28b412febb6df8ce3/b8f3aff7009fffbd-7c/s128x128u_c1/0b4ea6647bd836c5b010072f5b0bffdcf0ea1a89.pnj"
@@ -17,8 +17,8 @@
 		<ul>
 			<li><a href="index.html">Home</a></li>
 			<li><a href="media.html">Media</a></li>
-			<li><a class="active" href="projects.html">Projects</a></li>
-			<li><a href="posts.html">Posts</a></li>
+			<li><a href="projects.html">Projects</a></li>
+			<li><a class="active" href="posts.html">Posts</a></li>
 		</ul>
 	</div>
 
@@ -26,7 +26,7 @@
 	</div>
 
 	<div id="body_container">
-
+		
 	</div>
 
 </body>
@@ -35,7 +35,7 @@
 	import { Post_Page_Loader } from './posts_page_loader.js'
 	const params = new URLSearchParams(window.location.search)
 	const group = params.has('group') ? params.get('group'): 'default'
-	Post_Page_Loader.load_page('projects',group)
+	Post_Page_Loader.load_page('posts',group)
 </script>
 
 </html>
