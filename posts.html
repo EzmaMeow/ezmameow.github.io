@@ -15,10 +15,10 @@
 <body>
 	<div id="nav">
 		<ul>
-			<li><a href="index.html">Home</a></li>
-			<li><a href="media.html">Media</a></li>
-			<li><a href="projects.html">Projects</a></li>
-			<li><a class="active" href="posts.html">Posts</a></li>
+			<li><a id="index_tab" href="index.html">Home</a></li>
+			<li><a id="media_tab" href="posts.html?type=media">Media</a></li>
+			<li><a id="projects_tab" href="posts.html?type=projects">Projects</a></li>
+			<li><a id="posts_tab" href="posts.html?type=posts">Posts</a></li>
 		</ul>
 	</div>
 
@@ -26,7 +26,11 @@
 	</div>
 
 	<div id="body_container">
-		
+
+	</div>
+	<div class="nav_buttons">
+		<button id="back_button" hidden>Back</button>
+		<button id="next_button" hidden>Next</button>
 	</div>
 
 </body>
@@ -34,8 +38,42 @@
 <script type="module">
 	import { Post_Page_Loader } from './posts_page_loader.js'
 	const params = new URLSearchParams(window.location.search)
-	const group = params.has('group') ? params.get('group'): 'default'
-	Post_Page_Loader.load_page('posts',group)
+	//const TYPES = {POSTS:'posts',MEDIA:'media',PROJECTS:'projects'} //may not use. type is the dir or map name. group is the sub dir name or key in the map(group is not really needed)
+	const type = params.has('type') ? params.get('type') : 'posts'
+	const group = params.has('group') ? params.get('group') : 'default'
+	const page = params.has('page') ? params.get('page') : 0;
+	const max_posts = params.has('max_posts') ? params.get('max_posts') : 20;
+	const active_tab = document.getElementById(type + '_tab');
+	const next_button = document.getElementById('next_button');
+	const back_button = document.getElementById('back_button');
+	if (type === 'media') {
+		//media posts use media class. 
+		Post_Page_Loader.body_class_name = "info_content media collapsible_content"
+	}
+	//note: this may cause issue if the tab have an existing class that need to be kept.
+	active_tab.className = 'active'
+	Post_Page_Loader.on_loaded = () => {
+		const next_page = Post_Page_Loader.page + 1;
+		const back_page = Post_Page_Loader.page - 1;
+		if (Post_Page_Loader.has_page(next_page)) {
+			console.log('has next page')
+			next_button.hidden = false
+			next_button.addEventListener("click", (event) => {
+				window.location.href = `posts.html?type=${type}&group=${group}&page=${next_page}&max_posts=${max_posts}`
+			});
+		}
+		if (Post_Page_Loader.has_page(back_page)) {
+			console.log('has before page')
+			back_button.hidden = false
+			back_button.addEventListener("click", (event) => {
+				window.location.href = `posts.html?type=${type}&group=${group}&page=${back_page}&max_posts=${max_posts}`
+			});
+		}
+	}
+
+	Post_Page_Loader.load_page(type, group, page, max_posts)
+
+
 </script>
 
 </html>
