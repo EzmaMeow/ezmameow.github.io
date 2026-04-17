@@ -1,0 +1,63 @@
+<!doctype html>
+
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>Ezma Meow Home Page</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon"
+        href="https://64.media.tumblr.com/7fcb7cc886a1fae28b412febb6df8ce3/b8f3aff7009fffbd-7c/s128x128u_c1/0b4ea6647bd836c5b010072f5b0bffdcf0ea1a89.pnj"
+        type="image/x-icon">
+</head>
+
+<body>
+
+    <div id="nav">
+        <ul>
+            <li><a href="index.html">Home</a></li>
+            <li><a href="posts.html?type=media">Media</a></li>
+            <li><a href="posts.html?type=projects">Projects</a></li>
+            <li><a href="posts.html?type=posts">Posts</a></li>
+            <li><a class="active" href="contact.html">Contact</a></li>
+        </ul>
+    </div>
+
+    <div id="background">
+    </div>
+
+    <div id="body_container">
+        <div class="info_container">
+            <div class="info_title">
+                <h1>Email Ezma</h1>
+            </div>
+            <div class="info_content" >
+                <p>
+                    Fill this form to send an email to Ezma.<br>
+                    Responces are not to be expected.
+                </p>
+            </div>
+            <div class="info_links">
+                <form action="https://formsubmit.co/e7e402613d6081e99a0e514fefc227fc" method="POST">
+                    <input type="hidden" name="_captcha" value="false">
+                    <input type="hidden" name="_next" value="https://ezmameow.github.io/">
+                    <label>Email: </label>
+                    <input type="email" name="email" required>
+                    <br>
+                    <label>Name: </label>
+                    <input type="text" name="name" value="undisclosed" required>
+                    <br>
+                    <label>Message:</label>
+                    <textarea name="message" rows="5" required></textarea>
+                    <br>
+                    <button type="submit">Send</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+</body>
+
+
+</html>
