@@ -47,7 +47,7 @@ a {
 	background-color: #3665E7;
 	image-rendering: pixelated;
 
-	background-image: url(https://64.media.tumblr.com/5c1749ecc445ee793b22b35ece2356d6/42122333c0d9099e-3e/s540x810/c7edcc8fef8713aa0f218448b5b4b8d2d88b701e.pnj);
+	background-image: url(assets/background.jpg);
 	background-repeat: repeat;
 	background-position: center top;
 
@@ -87,7 +87,7 @@ a {
 	border: 8px solid #3665E7;
 	border-radius: 8px;
 	image-rendering: pixelated;
-	border-image-source: url(https://64.media.tumblr.com/bdc9bb3f9b367282f8dcfa9fa6449531/3ddabba5789ce870-88/s75x75_c1/7b358485ef8cfe83db7d4424686d55195c5aafc7.png);
+	border-image-source: url(assets/frame.png);
 	border-image-slice: 25%;
 	border-image-repeat: repeat;
 	border-image-width: 32px;
@@ -161,7 +161,7 @@ a {
 	background-color: #0cefff52;
 	border: 2px solid #3665E7;
 	color: #fb9ddf;
-	padding: 2x;
+	padding: 2px;
 	font-family: monospace;
 	user-select: all;
 	/* Clicking selects all text */
