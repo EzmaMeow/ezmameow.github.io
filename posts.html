@@ -5,7 +5,7 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width,initial-scale=1.0">
-	<title>Ezma Meow About Page</title>
+	<title>Posts</title>
 	<link rel="stylesheet" href="styles.css">
 	<link rel="icon"
 		href="assets/anim_profile_pic.gif"
@@ -14,13 +14,6 @@
 
 <body>
 	<div id="nav">
-		<ul>
-			<li><a id="index_tab" href="index.html">Home</a></li>
-			<li><a id="media_tab" href="posts.html?type=media">Media</a></li>
-			<li><a id="projects_tab" href="posts.html?type=projects">Projects</a></li>
-			<li><a id="posts_tab" href="posts.html?type=posts">Posts</a></li>
-			<li><a id="email_tab" href="contact.html">Contact</a></li>
-		</ul>
 	</div>
 
 	<div id="background">
@@ -37,25 +30,32 @@
 </body>
 
 <script type="module">
-	import { Post_Page_Loader } from './posts_page_loader.js'
+	import { Post_Page_Loader, add_html_from_file } from './content_loader.js'
 	const params = new URLSearchParams(window.location.search)
 	//const TYPES = {POSTS:'posts',MEDIA:'media',PROJECTS:'projects'} //may not use. type is the dir or map name. group is the sub dir name or key in the map(group is not really needed)
 	const type = params.has('type') ? params.get('type') : 'posts'
 	const group = params.has('group') ? params.get('group') : 'default'
 	const page = params.has('page') ? params.get('page') : 0;
 	const max_posts = params.has('max_posts') ? params.get('max_posts') : 20;
-	const active_tab = document.getElementById(type + '_tab');
+	//const active_tab = document.getElementById(type + '_tab');
 	const next_button = document.getElementById('next_button');
 	const back_button = document.getElementById('back_button');
 	if (type === 'media') {
 		//media posts use media class. 
 		Post_Page_Loader.body_class_name = "info_content media collapsible_content"
 	}
+	add_html_from_file('./data/html/navigation.html',document.getElementById('nav')).then((result)=>{
+		const active_tab = document.getElementById(type + '_tab');
+		if (active_tab){
+			active_tab.className = 'active'
+		}
+	})
 	//note: this may cause issue if the tab have an existing class that need to be kept.
-	active_tab.className = 'active'
+	//active_tab.className = 'active'
 	Post_Page_Loader.on_loaded = () => {
 		const next_page = Post_Page_Loader.page + 1;
 		const back_page = Post_Page_Loader.page - 1;
+		document.title = type.charAt(0).toUpperCase() + type.slice(1);
 		if (Post_Page_Loader.has_page(next_page)) {
 			console.log('has next page')
 			next_button.hidden = false
