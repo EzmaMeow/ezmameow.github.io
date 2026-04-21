@@ -1,0 +1,143 @@
+<!doctype html>
+
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>Settings</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" href="assets/anim_profile_pic.gif" type="image/x-icon">
+</head>
+
+<body>
+
+    <div id="nav">
+        <ul>
+            <li><a href="index.html">Home</a></li>
+            <li><a href="posts.html?type=media">Media</a></li>
+            <li><a href="posts.html?type=projects">Projects</a></li>
+            <li><a href="posts.html?type=posts">Posts</a></li>
+            <li><a href="contact.html">Contact</a></li>
+            <li><a class="active" href="settings.html">Settings</a></li>
+        </ul>
+    </div>
+
+    <div id="background">
+    </div>
+
+    <div id="body_container">
+        <div class="info_container collapsible">
+            <div class="info_title collapsible_toggle">
+                <h1>Permissions</h1>
+            </div>
+            <div class="info_content collapsible_content">
+                <p>
+                    It may be polite to ask to use them, so they are not used by default. 
+                    They are to make storing site wide setting and state possible. Nothing is logged
+                    to a server or sent anywhere (even if the cookies are ever used).
+                </p>
+            </div>
+            <div class="info_links collapsible_content">
+                <label title="Used for short term client settings and game states.">
+                    <span class="checkbox-text">Client Side Session Storage (Recommended):</span>
+                    <input type="checkbox" id="allow_session_storage">
+                </label>
+                <label title="Used for long term client settings and game states.">
+                    <span class="checkbox-text">Client Side Local Storage:</span>
+                    <input type="checkbox" id="allow_local_storage">
+                </label>
+                <label title="This is currently not used, but it would allow settings and state to be acessed over related sites. Say if I hosted the same game on neocities and github pages. 
+                Normally they will have diffrent states, but I think this would allow them to share a state?">
+                    <span class="checkbox-text"><del>Cookies:</del></span>
+                    <input type="checkbox" id="allow_cookies">
+                </label>
+
+            </div>
+        </div>
+
+        <div class='flex-break'></div>
+
+        <div class="info_container collapsible">
+            <div class="info_title collapsible_toggle">
+                <h1>Content</h1>
+            </div>
+            <div class="info_content collapsible_content">
+                <p>
+                    If this site add any content that may be undesirable for whatever reason,
+                    then they may be hidden unless below are checked and either Session Storage or Local Storage permissions are enable.
+                </p>
+            </div>
+            <div class="info_links collapsible_content">
+                <label title="Content that may be best hidden from minors.">
+                    <span class="checkbox-text">18+</span>
+                    <input type="checkbox" class="checkbox_settings" id="(18+)Content">
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { Collapsibles } from './lib/collapsibles.js'
+        import { Storage } from '/lib/storage.js'
+        //TEMP: 0, SESSION: 1 << 0, LOCAL: 1 << 1, COOKIE: 1 << 2, DATABASE:
+        const allow_session_storage = document.getElementById('allow_session_storage');
+        const allow_local_storage = document.getElementById('allow_local_storage');
+        const allow_cookies = document.getElementById('allow_cookies');
+        const checkbox_settings = document.querySelectorAll('.checkbox_settings');
+
+        function on_storage_checked(event, acessFlag) {
+            if (event.target.checked) {
+                Storage.addAcess(acessFlag)
+            }
+            else {
+                Storage.removeAcess(acessFlag)
+            }
+            Storage.save();
+        }
+        function on_setting_checked(event) {
+            //will remove and add again. bit extra, but less code. also might try compacting the flags into an int and replace it each change
+            if (Storage.has(event.target.id, Storage.ACESS_FLAGS.LOCAL)) {
+                Storage.remove(event.target.id, Storage.ACESS_FLAGS.LOCAL)
+            }
+            if (Storage.has(event.target.id, Storage.ACESS_FLAGS.SESSION)) {
+                Storage.remove(event.target.id, Storage.ACESS_FLAGS.SESSION)
+            }
+            if (Storage.has(event.target.id, Storage.ACESS_FLAGS.TEMP)) {
+                Storage.remove(event.target.id, Storage.ACESS_FLAGS.TEMP)
+            }
+            if (event.target.checked) {
+                if (Storage.hasAcess(Storage.ACESS_FLAGS.LOCAL)) {
+                    Storage.set(event.target.id, true, Storage.ACESS_FLAGS.LOCAL, false)
+                }
+                else if (Storage.hasAcess(Storage.ACESS_FLAGS.SESSION)) {
+                    Storage.set(event.target.id, true, Storage.ACESS_FLAGS.SESSION, true)
+                }
+                else {
+                    event.target.checked = false;
+                }
+            }
+        }
+
+        function update_checkboxes() {
+            allow_session_storage.checked = Storage.hasAcess(Storage.ACESS_FLAGS.SESSION);
+            allow_local_storage.checked = Storage.hasAcess(Storage.ACESS_FLAGS.LOCAL);
+            allow_cookies.checked = Storage.hasAcess(Storage.ACESS_FLAGS.COOKIE);
+        }
+        Storage.load();
+        allow_session_storage.addEventListener('change', (event) => on_storage_checked(event, Storage.ACESS_FLAGS.SESSION))
+        allow_local_storage.addEventListener('change', (event) => on_storage_checked(event, Storage.ACESS_FLAGS.LOCAL))
+        allow_cookies.addEventListener('change', (event) => on_storage_checked(event, Storage.ACESS_FLAGS.COOKIE))
+        checkbox_settings.forEach(checkbox => {
+            checkbox.checked = (
+                Storage.get(checkbox.id, Storage.ACESS_FLAGS.LOCAL) ||
+                Storage.get(checkbox.id, Storage.ACESS_FLAGS.SESSION, true)
+            )
+            checkbox.addEventListener('change', (event) => on_setting_checked(event))
+        });
+        update_checkboxes();
+        Collapsibles.register();
+    </script>
+</body>
+
+</html>

@@ -2,7 +2,7 @@
     "default": [
         {
             "title": "<h1>Web Games</h1>",
-            "text": "<p><li><a href='/maze_game/index.html'>Maze Game Prototype</a></li></p>"
+            "text": "<p><li><a href='/maze_game/index.html'>Maze Game Prototype</a></li><li><a href='/fishing.html'>Fishing Game Prototype</a></li></p>"
         },
         {
             "title": "<h1>RPGMaker Games</h1>",

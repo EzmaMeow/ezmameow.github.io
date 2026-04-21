@@ -25,7 +25,7 @@ export class Post_Page_Loader {
     static load_count = 0;
     static post_class_name = "info_container collapsible";
     static title_class_name = "info_title collapsible_toggle";
-    static body_class_name = "info_content collapsible_content";
+    static body_class_name = "info_content post collapsible_content";
     static page = 0;
     static max_posts = 20;
     static type = 'posts';
