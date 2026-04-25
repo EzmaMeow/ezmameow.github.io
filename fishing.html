@@ -26,9 +26,7 @@
             -webkit-user-drag: none;
         }
     </style>
-    <link rel="icon"
-		href="assets/anim_profile_pic.gif"
-		type="image/x-icon">
+    <link rel="icon" href="assets/anim_profile_pic.gif" type="image/x-icon">
 </head>
 
 <body>
@@ -37,9 +35,9 @@
         <ul>
             <li><a href="index.html">Home</a></li>
             <li><a href="posts.html?type=media">Media</a></li>
-			<li><a href="posts.html?type=projects">Projects</a></li>
-			<li><a href="posts.html?type=posts">Posts</a></li>
-			<li><a href="contact.html">Contact</a></li>
+            <li><a href="posts.html?type=projects">Projects</a></li>
+            <li><a href="posts.html?type=posts">Posts</a></li>
+            <li><a href="contact.html">Contact</a></li>
             <li><a class="active" href="fishing.html">Fishing</a></li>
         </ul>
     </div>
@@ -53,12 +51,12 @@
                 <h1 id='room_name'>Fishing</h1>
             </div>
             <div class="info_content">
-                <p class='text-center'> 
+                <p class='text-center'>
                     Meow click to fish : 3<br>
                     <br>
                     <a class='text-center' id="score">(NOTE:this is a prototype)</a>
                 </p>
-                
+
             </div>
             <div class="level-container" id="world">
                 <img src='https://64.media.tumblr.com/e98d0375bdc66a34480164c535f87872/bffe166c6db88413-3d/s400x600/9aa3a8b6cb3ec80147edaf474ad8b4bec15b3e64.pnj'
@@ -78,7 +76,10 @@
         const score_element = document.getElementById('score');
         splash_sound.volume = 0.25;
         quick_splash_sound.volume = 0.25;
-        let score = 0;
+        let score = parseInt(sessionStorage.getItem('fishing_score')) || 0;
+        if (score > 0) {
+            score_element.innerHTML = `Score: ${score}`;
+        }
 
         const level = new Level()
         level.on_ready = () => {
@@ -95,13 +96,18 @@
                 fish.depth = Math.random() * 0.5 + 0.5;
                 level.element.appendChild(fish.image);
                 fish.image.addEventListener("click", (event) => {
-                    if (fish.depth < 0.5) {
-                        splash_sound.play();
+                    if (fish.depth < 1.0 && !(Math.random() <= fish.depth)) {
+                        quick_splash_sound.pause();       
+                        quick_splash_sound.currentTime = 0;
+                        quick_splash_sound.play();
                         return
                     }
-                    quick_splash_sound.play();
-                    score += Math.max(Math.floor((fish.scale[0] + fish.scale[1])*0.75),1)
+                    splash_sound.pause();       
+                    splash_sound.currentTime = 0;
+                    splash_sound.play();
+                    score += Math.max(Math.floor((fish.scale[0] + fish.scale[1]) * 0.75), 1)
                     score_element.innerHTML = `Score: ${score}`;
+                    sessionStorage.setItem('fishing_score', score);
                     level.world.random_point_in_nav_area(fish.width, fish.height, fish.move_to)
                     level.world.random_point_in_nav_area(fish.width, fish.height, random_point)
                     fish.set_position(random_point[0], random_point[1]);
@@ -120,19 +126,46 @@
 
         let last_time = performance.now();
         let current_time = performance.now();
-        function loop() {
+        let loop_running = false;
+
+        let in_focus = true;
+        window.addEventListener('blur', () => {
+            in_focus = false;
+            loop_running = false;
+        });
+
+        // When the window gains focus
+        window.addEventListener('focus', () => {
+            in_focus = true;
+            start_loop();
+        });
+
+
+        function start_loop() {
+            if (loop_running) {
+                console.log('loop is already running')
+            }
+            last_time = performance.now();
             current_time = performance.now();
-            if (document.hidden || document.visibilityState !== "visible" || !document.hasFocus()) { 
+            loop_running = true;
+            requestAnimationFrame(loop);
+        }
+        function loop() {
+            if (!loop_running) { return; }
+            current_time = performance.now();
+
+            if (document.hidden || document.visibilityState !== "visible" || !document.hasFocus() || !in_focus) {
                 last_time = current_time;
                 requestAnimationFrame(loop);
                 return
             }
             const delta = (current_time - last_time) / 1000.0;
+            if (delta > 2.0) { console.log('delta is greater than 2 seconds') }
             last_time = current_time;
             level.update(delta)
             requestAnimationFrame(loop);
         }
-        requestAnimationFrame(loop);
+        start_loop();
 
     </script>
 

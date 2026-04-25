@@ -38,6 +38,16 @@ a {
 	background-color: #0cefff52;
 }
 
+.nav-tab{
+	cursor: pointer;
+	color: #0eebfb;
+	text-align: center;
+    padding: 12px 12px;
+}
+.nav-tab:hover:not(.active){
+	background-color: #0cefff52;
+}
+
 .active {
 	background-color: #0eebfb;
 	color: #771390;

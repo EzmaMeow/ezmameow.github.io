@@ -86,6 +86,10 @@
         const allow_cookies = document.getElementById('allow_cookies');
         const checkbox_settings = document.querySelectorAll('.checkbox_settings');
 
+        //NOTE: may use sessions storage without checking this by default if it is nessary
+        //but would need to use storage version of loading/saving if it a setting that may
+        //work better in local storage
+
         function on_storage_checked(event, acessFlag) {
             if (event.target.checked) {
                 Storage.addAcess(acessFlag)

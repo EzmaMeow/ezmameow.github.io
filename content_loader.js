@@ -37,6 +37,10 @@ export class Post_Page_Loader {
 
     }
     static #loaded() {
+        for (let i = 0; i < this.posts.length; i++) {
+            const post = this.posts[i];
+            this.posts[i] = this.create_post(post);
+        }
         this.on_loaded();
         Collapsibles.register();
     }
@@ -60,6 +64,7 @@ export class Post_Page_Loader {
         this.post_container.appendChild(post);
         post.appendChild(title);
         post.appendChild(body);
+        return post;
     }
     //this is a check to see if a page exists. mostly to be used for displaying
     //page buttons
@@ -80,7 +85,7 @@ export class Post_Page_Loader {
         this.update_load_count(1)
         this.post_container = document.getElementById('body_container');
         return FileLoader.load('./data/' + type + '_map.json', FileLoader.LOAD_TYPE.JSON).then((data) => {
-            console.log(this, data)
+            this.posts = [];
             this.data = data;
             for (let i = page_start; i < page_end; i++) {
                 if (!(i >= 0 && i < data[this.group].length)) {
@@ -96,13 +101,15 @@ export class Post_Page_Loader {
                     this.update_load_count(1)
                     FileLoader.load(post.path, FileLoader.LOAD_TYPE.TEXT).then((text) => {
                         post.text = text
-                        this.create_post(post);
+                        this.posts.push(post)
+                        //this.create_post(post);
                         this.update_load_count(-1);
                     })
                 }
                 else if (post.text) {
                     post_count -= 1;
-                    this.create_post(post)
+                    this.posts.push(post)
+                    //this.create_post(post)
                 }
             }
             this.update_load_count(-1);
