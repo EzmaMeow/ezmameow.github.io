@@ -100,15 +100,6 @@ export class Fish {
     get_speed() {
         return this.base_speed;
     }
-    on_ready() {
-
-    }
-    #ready() {
-        this.on_ready();
-    }
-    #image_loaded() {
-        this.#ready();
-    }
     update_animation(delta = 1.0) {
 
         if (this.velocity[0] < 0) {
@@ -224,31 +215,53 @@ export class Fish {
 
 
     }
+    load(data){
+        //could also have arrays or object rep random math unless there is a sting eva for that already 
+        //(look like evaluateExpression can handle math, but the random numbers would have to added via code)
+        if (data.width !== undefined ){
+            this.width = parseInt(data.width) || 0;
+        }
+        if (data.height !== undefined ){
+            this.height = parseInt(data.height) ||0;
+        }
+        if (data.depth !== undefined ){
+            this.depth = parseFloat(data.depth) || 0;
+        }
+        if (data.img_src !== undefined ){
+            this.image.src = data.img_src
+        }
+        if (data.x !== undefined || data.y !== undefined ){
+           this.set_position(parseFloat(data.x)||0.0, parseFloat(data.y)||0.0); 
+        }
+        if (data.base_speed !== undefined ){
+            this.base_speed = parseFloat(data.base_speed)||0;
+        }
+        if (data.scale_x !== undefined || data.scale_y !== undefined ){
+            this.set_scale(parseFloat(data.scale_x)||0.0,parseFloat(data.scale_y)||0.0)
+        }
+
+    }
     setup(
         x = 0.0, y = 0.0, world = this.world
     ) {
         this.world = world
 
         this.set_position(x, y);
-        if (this.image.complete) {
-            this.#image_loaded();
-        } else {
-            this.image.addEventListener("load", () => this.#image_loaded());
-        }
         if (world) {
             this.world.random_point_in_nav_area(this.width, this.height, this.move_to)
         }
     }
     //const build the nessary peices while setup assign world related data
-    constructor(img_source, width = 16, height = 16, world = undefined) {
+    constructor(data={}, world = undefined) {
         this.world = world;
         this.image = document.createElement('img');
         this.image.style.position = 'absolute';
-        this.image.src = img_source;
+        //this.image.src = img_src;
         this.image.style.zIndex = "2";
         this.image.setAttribute('draggable', 'false');
-        this.width = width;
-        this.height = height;
+        //this.width = width;
+        //this.height = height;
+        this.load(data)
     }
 
 }

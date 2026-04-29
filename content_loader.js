@@ -5,20 +5,62 @@ import { FileLoader } from './lib/file_loader.js'
 //title and metadata. could add a split word like [html] and treat all at the start
 //as json or have a few [title] [body] [data] that state the end of that segment
 
+//this allow only the body(inner html) of a html file to be return
+//for cases where one wants a standalone static post
+export async function load_html_body(file) {
+    //const html = await (await fetch(file)).text();
+    const html = await fetch(file).then(
+        result => {
+            if (!result.ok) { return null }
+            return result.text()
+        }
+    ).catch(
+        error => { return null }
+    );
+    if (!html) { return null }
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    return doc.body.innerHTML;
+}
+
 export async function add_html_from_file(file, container = document.body_class_name, type = 'div') {
     if (container) {
-        return FileLoader.load(file, FileLoader.LOAD_TYPE.TEXT).then((text_data) => {
-            const element = (type) ? document.createElement(type) : container;
-            if (element !== container) {
-                container.appendChild(element);
-            }
-            element.innerHTML = text_data;
-        });
+        const body_html = await load_html_body(file);
+        const element = (type) ? document.createElement(type) : container;
+        if (element !== container) {
+            container.appendChild(element);
+        }
+        element.innerHTML = body_html;
     }
     else {
         throw new Error("Container is not a vaild element.");
     }
 }
+
+export async function load_page(dir = '', files = [], container = document.body, element = document.createElement('div'), page = 0, max_posts = 20) {
+    const page_start = page * max_posts;
+    const page_end = (page + 1) * max_posts;
+    for (let i = page_start; i < page_end; i++) {
+        if (!(i >= 0 && i < files.length)) {
+            break;
+        }
+        console.log(dir + '/' + files[i])
+        if (typeof files[i] === 'string') {
+            const html = await load_html_body(dir + '/' + files[i])
+            if (!html) { continue }
+            //going to allow element to copy, string to create a generoc element, or create a div if no else applies
+            const post = element instanceof HTMLElement ? element.cloneNode(true) : typeof element === 'string' ? document.createElement(element) : document.createElement('div');
+            post.innerHTML = html
+            container.appendChild(post)
+        }
+
+    }
+}
+//should make a load content funtion instead of fighting with below
+//that use the sitemap approch or that brute force approch
+//would need pageing, async, and anding invalid types
+//sitemap mostly need to ignore index0 if an object, then
+//loop from page start to page end or untill all elements are used up (also ignoring fail cases)
+//brute force just check for file name plus i plus format untill one fails to load or page end
 
 export class Post_Page_Loader {
     static post_container;
@@ -33,24 +75,6 @@ export class Post_Page_Loader {
     //the data use to load posts either a map of groups or an array of links depending on the logic used
     //may create an array of links in the future so group is not needed. 
     static data;
-    static on_loaded() {
-
-    }
-    static #loaded() {
-        for (let i = 0; i < this.posts.length; i++) {
-            const post = this.posts[i];
-            this.posts[i] = this.create_post(post);
-        }
-        this.on_loaded();
-        Collapsibles.register();
-    }
-
-    static update_load_count(amount = 1) {
-        this.load_count += amount;
-        if (this.load_count <= 0) {
-            this.#loaded();
-        }
-    }
 
     static create_post(data) {
         const post = document.createElement('div');
@@ -82,37 +106,29 @@ export class Post_Page_Loader {
         this.group = group;
         const page_start = this.page * this.max_posts;
         const page_end = (this.page + 1) * this.max_posts;
-        this.update_load_count(1)
         this.post_container = document.getElementById('body_container');
-        return FileLoader.load('./data/' + type + '_map.json', FileLoader.LOAD_TYPE.JSON).then((data) => {
-            this.posts = [];
-            this.data = data;
-            for (let i = page_start; i < page_end; i++) {
-                if (!(i >= 0 && i < data[this.group].length)) {
-                    break;
-                }
-                const post = data[this.group][i]
-                //for (const post of data[group]) {
-                if (post_count <= 0) {
-                    break;
-                }
-                if (post.path) {
-                    post_count -= 1;
-                    this.update_load_count(1)
-                    FileLoader.load(post.path, FileLoader.LOAD_TYPE.TEXT).then((text) => {
-                        post.text = text
-                        this.posts.push(post)
-                        //this.create_post(post);
-                        this.update_load_count(-1);
-                    })
-                }
-                else if (post.text) {
-                    post_count -= 1;
-                    this.posts.push(post)
-                    //this.create_post(post)
-                }
+
+        const map_data = await (await fetch('./data/' + type + '_map.json')).json();
+        this.data = map_data;
+        for (let i = page_start; i < page_end; i++) {
+            if (!(i >= 0 && i < map_data[this.group].length)) {
+                break;
             }
-            this.update_load_count(-1);
-        });
+            const post = map_data[this.group][i]
+            if (post_count <= 0) {
+                break;
+            }
+            if (post.path) {
+                post_count -= 1;
+                const text = await (await fetch(post.path)).text();
+                post.text = text
+                this.create_post(post)
+
+            }
+            else if (post.text) {
+                post_count -= 1;
+                this.create_post(post)
+            }
+        }
     }
 }

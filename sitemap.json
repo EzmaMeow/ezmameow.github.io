@@ -1,0 +1,34 @@
+[
+    {
+      "assets": [
+        "fish.gif",
+        "frame.png"
+        ],
+      "data": [
+          {
+            "html": [
+              "navigation.html"
+            ],
+            "posts": [
+              "Random_Projects_Info.html",
+              "Random_Things_About_Ezma_Meow.html"
+            ]
+          },
+          "projects_map.json",
+          "media_map.json",
+          "posts_map.json"
+        ],
+      "lib": [
+          "collapsibles.js",
+          "file_loader.js",
+          "media_wrapper.js",
+          "storage.js"
+        ]
+    },
+    "index.html",
+    "fishing.html",
+    "about.html",
+    "posts.html",
+    "settings.html",
+    "styles.css"
+]

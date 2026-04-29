@@ -34,9 +34,9 @@
     <div id="nav">
         <ul>
             <li><a href="index.html">Home</a></li>
-            <li><a href="posts.html?type=media">Media</a></li>
-            <li><a href="posts.html?type=projects">Projects</a></li>
-            <li><a href="posts.html?type=posts">Posts</a></li>
+            <li><a href="posts.html#type=media">Media</a></li>
+            <li><a href="posts.html#type=projects">Projects</a></li>
+            <li><a href="posts.html#type=posts">Posts</a></li>
             <li><a href="contact.html">Contact</a></li>
             <li><a class="active" href="fishing.html">Fishing</a></li>
         </ul>
@@ -46,6 +46,24 @@
     </div>
 
     <div id="body_container">
+        <div class="container text-center">
+            <b>Radio Player</b><br>
+            <audio id="radioAudio" preload="none"></audio>
+            <button id="toggleRadio">Waiting</button>
+            <details>
+                <summary>Radio Options</summary>
+                Url: <input type="text" id="streamUrl"
+                    placeholder="Enter stream URL (e.g. http://...) or radio garden channel id"
+                    value="https://radio.garden/listen/wcpe-the-classical-station/dNa5l6AK" style="width:75%;"
+                    class="radioOptions" data-property="src">
+                <button id="radioDefaultStation">⟲</button>
+                <br>
+                Volume: <input type="range" min="0" max="1" step="0.01" value="0.5" class="radioOptions"
+                    data-property="volume" style="width: 75%;">
+            </details>
+        </div>
+        <div class="flex-break"></div>
+
         <div class="info_container">
             <div class="info_title">
                 <h1 id='room_name'>Fishing</h1>
@@ -63,19 +81,45 @@
                     alt='A lazy, mouse painted, waterscape.' class="background-image" id="level">
 
             </div>
+            <details class="text-center">
+                <summary>Options</summary>
+                Sound Volume: <input type="range" id="sound_volume" min="0" max="1" step="0.01" value="0.5"
+                    style="width: 75%;">
+            </details>
         </div>
     </div>
 
     <audio id="splash_sound" src="./assets/splash.wav"></audio>
     <audio id="quick_splash_sound" src="./assets/quick_splash.wav"></audio>
 
+    <script type="module" src="./radio_player.js"></script>
     <script type="module">
         import { World, Level, Fish } from './fishing.js'
+        const sound_volume_element = document.getElementById('sound_volume');
+        console.log(sound_volume_element)
         const splash_sound = document.getElementById('splash_sound')
         const quick_splash_sound = document.getElementById('quick_splash_sound');
         const score_element = document.getElementById('score');
-        splash_sound.volume = 0.25;
-        quick_splash_sound.volume = 0.25;
+        const sound_volume_id = 'fishing_sound_volume';
+        let sound_volume = localStorage.getItem(sound_volume_id)
+        if (sound_volume === null) {
+            sound_volume = sessionStorage.getItem(sound_volume_id)
+        }
+        if (sound_volume === null) {
+            sound_volume = 0.25;
+        }
+        splash_sound.volume = sound_volume;
+        quick_splash_sound.volume = sound_volume;
+        sound_volume_element.value = sound_volume;
+        sound_volume_element.addEventListener('change', (event) => {
+            sound_volume = parseFloat(event.target.value);
+            splash_sound.volume = sound_volume;
+            quick_splash_sound.volume = sound_volume;
+            sessionStorage.setItem(sound_volume_id, event.target.value)
+            splash_sound.pause();
+            splash_sound.currentTime = 0;
+            splash_sound.play();
+        })
         let score = parseInt(sessionStorage.getItem('fishing_score')) || 0;
         if (score > 0) {
             score_element.innerHTML = `Score: ${score}`;
@@ -84,25 +128,40 @@
         const level = new Level()
         level.on_ready = () => {
             const random_point = [0.0, 0.0];
+            const fish_data = {
+                width: 16,
+                height: 16,
+                img_src: './assets/fish.gif'
+            }
+            const fish_width = 16;
+            const fish_height = 16;
+
             for (let i = 0; i < 10; i++) {
-                const fish = new Fish('./assets/fish.gif', 16, 16, level.world)
+                //const fish = new Fish('./assets/fish.gif', fish_width, fish_height, level.world)
+                //level.objects.push(fish);
+                level.world.random_point_in_nav_area(fish_data.width, fish_data.height, random_point)
+                fish_data.x = random_point[0];
+                fish_data.y = random_point[1];
+                fish_data.base_speed = Math.random() * 8 + 8;
+                fish_data.scale_x = Math.random() * 1.5 + 0.5;
+                fish_data.scale_y = Math.random() * 1.5 + 0.5;
+                const fish = new Fish(fish_data, level.world)
                 level.objects.push(fish);
-                level.world.random_point_in_nav_area(fish.width, fish.height, random_point)
-                fish.setup(
-                    random_point[0], random_point[1]
-                )
-                fish.base_speed = Math.random() * 8 + 8;
-                fish.set_scale(Math.random() * 1.5 + 0.5)
+                //fish.setup(
+                //    random_point[0], random_point[1]
+                //)
+                //fish.base_speed = Math.random() * 8 + 8;
+                //fish.set_scale(Math.random() * 1.5 + 0.5)
                 fish.depth = Math.random() * 0.5 + 0.5;
                 level.element.appendChild(fish.image);
                 fish.image.addEventListener("click", (event) => {
                     if (fish.depth < 1.0 && !(Math.random() <= fish.depth)) {
-                        quick_splash_sound.pause();       
+                        quick_splash_sound.pause();
                         quick_splash_sound.currentTime = 0;
                         quick_splash_sound.play();
                         return
                     }
-                    splash_sound.pause();       
+                    splash_sound.pause();
                     splash_sound.currentTime = 0;
                     splash_sound.play();
                     score += Math.max(Math.floor((fish.scale[0] + fish.scale[1]) * 0.75), 1)
