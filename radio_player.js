@@ -35,6 +35,13 @@ export class Radio extends MediaWrapper {
         }
         return streamUrl
     }
+    parseBoolean(value){
+        let newValue = value
+        if (typeof newValue === "string") {
+            newValue = /^true$/i.test(newValue.trim());
+        }
+        return Boolean(newValue);
+    }
     setOption(property, value) {
         if (property === 'volume') {
             this.target.volume = parseFloat(value);
@@ -45,24 +52,18 @@ export class Radio extends MediaWrapper {
             return true;
         }
         if (property === 'autoplay') {
-            if (typeof value === "string"){
-                value = /^true$/i.test(value.trim());
-            }
-            
-            
-            this.target.autoplay = Boolean(value);
+            this.target.autoplay = this.parseBoolean(value);
+            return true;
+        }
+        if (property === 'useLocalStorage'){
+            this.useLocalStorage = this.parseBoolean(value);
             return true;
         }
         return false;
 
     }
-    //override this function with the check to verify if local
-    //storage is allowed
-    saveLocal() {
-        return false
-    }
     saveOption(property, value) {
-        if (this.saveLocal()) {
+        if (this.useLocalStorage) {
             localStorage.setItem(this.SAVEKEY + property, value)
         }
         else {
@@ -89,8 +90,15 @@ export class Radio extends MediaWrapper {
                 option.dataset.property,
                 option.type === 'checkbox' ? option.checked : option.value
             )
+
             if (option.type === 'checkbox') {
-                option.checked = loadValue;
+                if (typeof loadValue === "string") {
+                    option.checked = /^true$/i.test(loadValue.trim());
+                }
+                else{
+                    option.checked = Boolean(loadValue);
+                }
+                
             }
             else {
                 option.value = loadValue;
@@ -119,7 +127,7 @@ const radio = new Radio(document.getElementById('radioAudio'));
 const toggleRadioElement = document.getElementById('toggleRadio');
 
 function loadRadio() {
-    radio.load(radio.parseUrlInput(streamInput.value.trim()),radio.target.autoplay);
+    radio.load(radio.parseUrlInput(streamInput.value.trim()), radio.target.autoplay);
 }
 function defaultClicked() {
     streamInput.value = '%defaultStation';
@@ -152,6 +160,7 @@ if (toggleRadioElement) {
         }
     }
 }
+radio.routeOptionInputs('.radioOptions');
 
 document.addEventListener("click", unlockAudio);
 document.addEventListener("keydown", unlockAudio);
@@ -160,4 +169,4 @@ document.addEventListener("touchstart", unlockAudio);
 //to the provided elements
 document.getElementById('radioDefaultStation').addEventListener("click", (event) => defaultClicked())
 document.getElementById('toggleRadio').addEventListener("click", (event) => toggleRadio())
-radio.routeOptionInputs('.radioOptions');
+

@@ -1,0 +1,102 @@
+<!doctype html>
+
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>Fishing</title>
+    <link rel="stylesheet" href="/styles.css">
+    <style>
+        /* Container that holds all images */
+        .level-container {
+            position: relative;
+            width: 100%;
+            /* Responsive width */
+            /* max-width: 800px;*/
+            margin: auto;
+        }
+
+        /* Main large image */
+        .background-image {
+            width: 100%;
+            height: auto;
+            display: block;
+            user-drag: none;
+            -webkit-user-drag: none;
+        }
+    </style>
+    <link rel="icon" href="/assets/anim_profile_pic.gif" type="image/x-icon">
+</head>
+
+<body>
+
+    <div id="nav">
+        <ul>
+            <li><a href="index.html">Home</a></li>
+            <li><a href="posts.html#type=media">Media</a></li>
+            <li><a href="posts.html#type=projects">Projects</a></li>
+            <li><a href="posts.html#type=posts">Posts</a></li>
+            <li><a href="contact.html">Contact</a></li>
+            <li><a class="active" href="fishing.html">Fishing</a></li>
+        </ul>
+    </div>
+
+    <div id="background">
+    </div>
+
+    <div id="body_container">
+        <div class="container text-center">
+            <b>Radio Player</b><br>
+            <audio id="radioAudio" preload="none"></audio>
+            <button id="toggleRadio">Waiting</button>
+            <details>
+                <summary>Radio Options</summary><br>
+                <label>Use Local Storage: <input type="checkbox" class="radioOptions" data-property="useLocalStorage" title="Uses localStorage to store options untill cleared." ></label><br>
+                <label>Autoplay: <input type="checkbox" class="radioOptions" data-property="autoplay"></label><br><br>
+                Volume: <input type="range" min="0" max="1" step="0.01" value="0.5" class="radioOptions"
+                    data-property="volume" style="width: 75%;"><br><br>
+                Url: <input type="text" id="streamUrl"
+                    placeholder="Enter stream URL (e.g. http://...) or radio garden channel id"
+                    value="https://radio.garden/listen/wcpe-the-classical-station/dNa5l6AK" style="width:75%;"
+                    class="radioOptions" data-property="src">
+                <button id="radioDefaultStation">⟲</button>   
+            </details>
+        </div>
+        <div class="flex-break"></div>
+
+        <div class="info_container">
+            <div class="info_title">
+                <h1 id='room_name'>Fishing</h1>
+            </div>
+            <div class="info_content">
+                <p class='text-center'>
+                    Meow click to fish : 3<br>
+                    <br>
+                    <a class='text-center' id="score">(NOTE:this is a prototype)</a>
+                </p>
+
+            </div>
+            <div class="level-container" id="world">
+                <img src='https://64.media.tumblr.com/e98d0375bdc66a34480164c535f87872/bffe166c6db88413-3d/s400x600/9aa3a8b6cb3ec80147edaf474ad8b4bec15b3e64.pnj'
+                    alt='A lazy, mouse painted, waterscape.' class="background-image" id="level">
+
+            </div>
+            <details class="text-center">
+                <summary>Options</summary>
+                Sound Volume: <input type="range" id="sound_volume" min="0" max="1" step="0.01" value="0.5"
+                    style="width: 75%;">
+            </details>
+        </div>
+    </div>
+
+    <audio id="splash_sound" src="/assets/splash.wav"></audio>
+    <audio id="quick_splash_sound" src="/assets/quick_splash.wav"></audio>
+
+    <script type="module" src="/radio_player.js"></script>
+    <script type="module" src="./fishing.js"></script>
+    
+
+</body>
+
+</html>

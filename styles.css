@@ -226,6 +226,8 @@ label {
 	cursor: pointer;
 	width: 100%;
 	white-space: nowrap;
+	flex-wrap: wrap;
+    flex-direction: column;
 }
 
 button {
