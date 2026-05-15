@@ -1,0 +1,110 @@
+{
+	"Carp": {
+		"name":"Carp",
+		"min_weight":1.0,
+		"max_weight":15.0,
+		"saltwater": false,
+		"freshwater": true
+	},
+	"Catfish": {
+		"name":"Catfish",
+		"min_weight":0.5,
+		"max_weight":100.0,
+		"saltwater": false,
+		"freshwater": true
+	},
+	"Crappie": {
+		"name":"Crappie",
+		"min_weight":0.25,
+		"max_weight":0.75,
+		"saltwater": false,
+		"freshwater": true
+	},
+	"Trout": {
+		"name":"Trout",
+		"min_weight": 1.0,
+		"max_weight": 8.0,
+		"saltwater": false,
+		"freshwater": true
+	},
+	"Largemouth Bass": {
+		"name":"Largemouth Bass",
+		"min_weight":0.5,
+		"max_weight":2.0,
+		"saltwater": false,
+		"freshwater": true
+	},
+	"Smallmouth Bass": {
+		"name":"Smallmouth Bass",
+		"min_weight":0.4,
+		"max_weight":2.4,
+		"saltwater": false,
+		"freshwater": true
+	},
+	"Sturgeon": {
+		"name":"Sturgeon",
+		"min_weight":160.0,
+		"max_weight":360.0,
+		"saltwater": false,
+		"freshwater": true
+	},
+	"Walleye": {
+		"name":"Walleye",
+		"min_weight":4.0,
+		"max_weight":10.0,
+		"saltwater": false,
+		"freshwater": true
+	},
+	"Pike": {
+		"name":"Pike",
+		"min_weight":1.4,
+		"max_weight":28.4,
+		"average_weight":11.3,
+		"saltwater": false,
+		"freshwater": true
+	},
+	"Pickerel": {
+		"name":"Pickerel",
+		"min_weight":1.4,
+		"max_weight":4.0,
+		"average_weight":2.0,
+		"saltwater": false,
+		"freshwater": true
+	},
+	"Muskellunge": {
+		"name":"Muskellunge",
+		"min_weight":7.0,
+		"max_weight":30.0,
+		"average_weight":16.5,
+		"saltwater": false,
+		"freshwater": true
+	},
+	"Bluegill": {
+		"name":"Bluegill",
+		"min_weight":0.1,
+		"max_weight":1.0,
+		"saltwater": false,
+		"freshwater": true
+	},
+	"Sunfish": {
+		"name":"Sunfish",
+		"min_weight":0.1,
+		"max_weight":1.0,
+		"saltwater": false,
+		"freshwater": true
+	},
+	"Drum": {
+		"name":"Drum",
+		"min_weight":1.0,
+		"max_weight":25.0,
+		"saltwater": false,
+		"freshwater": true
+	},
+	"Tilapia": {
+		"name":"Tilapia",
+		"min_weight":0.5,
+		"max_weight":5.0,
+		"saltwater": false,
+		"freshwater": true
+	}
+}

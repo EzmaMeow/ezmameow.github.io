@@ -1,0 +1,9 @@
+{
+	"Salmon": {
+		"name":"Salmon",
+		"min_weight":3.0,
+		"max_weight":6.0,
+		"saltwater": true,
+		"freshwater": true
+	}
+}

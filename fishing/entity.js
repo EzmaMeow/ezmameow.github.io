@@ -1,9 +1,12 @@
 //something that exists. dose not need movement logic and properties
 export class Entity {
+    static default_properties = {
+        x:0.0,
+        y:0.0
+    }
     image
     #position = [0.0, 0.0];
     #scale = [1.0, 1.0];
-    get scale() { return this.#scale; }
     #opacity = 1.0;
     #width = 16.0;
     #height = 16.0;
@@ -13,10 +16,6 @@ export class Entity {
     //or modifcation only will cause bugs (desync with the doc)
     //cant really protect it without turning it into an object
     get position() {
-        if (this.image) {
-            this.#position[0] = parseFloat(this.image.style.left) || 0.0;
-            this.#position[1] = parseFloat(this.image.style.top) || 0.0;
-        }
         return this.#position;
     }
     set_position(x = 0.0, y = 0.0) {
@@ -24,6 +23,9 @@ export class Entity {
         this.#position[1] = y;
         this.image.style.left = this.#position[0] + 'px'
         this.image.style.top = this.#position[1] + 'px'
+    }
+    get scale() {
+         return this.#scale; 
     }
     get width() {
         return this.#width;
@@ -61,7 +63,19 @@ export class Entity {
     }
     update(delta = 1.0) {
     }
-    load(data) {
+    save(){
+        return {
+            x:this.position[0],
+            y:this.position[1],
+            width:this.width,
+            height:this.height,
+            img_src:this.image.src,
+            scale_x:this.scale[0],
+            scale_y:this.scale[1],
+            opacity:this.opacity,
+        }
+    }
+    load(data = Entity.default_properties) {
         //could also have arrays or object rep random math unless there is a sting eva for that already 
         //(look like evaluateExpression can handle math, but the random numbers would have to added via code)
         if (data.width !== undefined) {
@@ -77,7 +91,7 @@ export class Entity {
             this.set_position(parseFloat(data.x) || 0.0, parseFloat(data.y) || 0.0);
         }
         if (data.scale_x !== undefined || data.scale_y !== undefined) {
-            this.set_scale(parseFloat(data.scale_x) || 0.0, parseFloat(data.scale_y) || 0.0)
+            this.set_scale(parseFloat(data.scale_x) || 1.0, parseFloat(data.scale_y) || 1.0)
         }
         if (data.opacity !== undefined) {
             this.opacity = parseFloat(data.opacity) || 1.0;
@@ -85,7 +99,7 @@ export class Entity {
 
     }
     //const build the nessary peices while setup assign world related data
-    constructor(data = {}, world = undefined) {
+    constructor(data = Entity.default_properties, world = undefined) {
         this.world = world;
         this.image = document.createElement('img');
         this.image.style.position = 'absolute';
@@ -96,5 +110,4 @@ export class Entity {
         //this.height = height;
         this.load(data)
     }
-
 }

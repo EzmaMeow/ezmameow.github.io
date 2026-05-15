@@ -52,7 +52,8 @@
             <button id="toggleRadio">Waiting</button>
             <details>
                 <summary>Radio Options</summary><br>
-                <label>Use Local Storage: <input type="checkbox" class="radioOptions" data-property="useLocalStorage" title="Uses localStorage to store options untill cleared." ></label><br>
+                <label>Use Local Storage: <input type="checkbox" class="radioOptions" data-property="useLocalStorage"
+                        title="Uses localStorage to store options untill cleared."></label><br>
                 <label>Autoplay: <input type="checkbox" class="radioOptions" data-property="autoplay"></label><br><br>
                 Volume: <input type="range" min="0" max="1" step="0.01" value="0.5" class="radioOptions"
                     data-property="volume" style="width: 75%;"><br><br>
@@ -60,7 +61,7 @@
                     placeholder="Enter stream URL (e.g. http://...) or radio garden channel id"
                     value="https://radio.garden/listen/wcpe-the-classical-station/dNa5l6AK" style="width:75%;"
                     class="radioOptions" data-property="src">
-                <button id="radioDefaultStation">⟲</button>   
+                <button id="radioDefaultStation">⟲</button>
             </details>
         </div>
         <div class="flex-break"></div>
@@ -84,8 +85,15 @@
             </div>
             <details class="text-center">
                 <summary>Options</summary>
+                <br>
+                <label>Save Locally: <input type="checkbox" id="fishing_save_locally"></label><br>
+                <br>
                 Sound Volume: <input type="range" id="sound_volume" min="0" max="1" step="0.01" value="0.5"
-                    style="width: 75%;">
+                    style="width: 75%;"><br>
+            </details>
+            <details class="text-center">
+                <summary>Inventory</summary>
+                <div id='inventory'></div>
             </details>
         </div>
     </div>
@@ -94,8 +102,41 @@
     <audio id="quick_splash_sound" src="/assets/quick_splash.wav"></audio>
 
     <script type="module" src="/radio_player.js"></script>
-    <script type="module" src="./fishing.js"></script>
-    
+    <script type="module">
+        import { start_fishing_game } from "./fishing.js"
+        import { Inventory } from "/scripts/inventory.js"
+        const game = await start_fishing_game();
+        const inventory = new Inventory('inventory')
+
+        inventory.update_item = function(item, item_data) {
+            item.icon_src = this.get_item_data_property(item_data, 'icon_src', "/assets/anim_profile_pic.gif")
+            const min = this.get_item_data_property(item_data, 'min_weight', 0.0)
+            const max = this.get_item_data_property(item_data, 'max_weight', 1.0)
+            const min_weight_ratio = this.get_item_data_property(item_data, 'min_weight_ratio', 0)
+            const max_weight_ratio = this.get_item_data_property(item_data, 'max_weight_ratio', 0)
+            const min_weight = min + (max - min) * min_weight_ratio;
+            const max_weight = min + (max - min) * max_weight_ratio;
+            const weight = min + (max - min) *  this.get_item_data_property(item_data, 'weight_ratio', 0.0);
+            const total_caught = this.get_item_data_property(item_data, 'total_catches', 0)
+            const name = this.get_item_data_property(item_data, 'name', 'no_name')
+
+            item.update_text(`${name} ${weight.toFixed(3)}kg`);
+            item.update_info(`Total Caught:${total_caught} <br> Min Weight:${min_weight.toFixed(3)}kg <br> Max Weight::${max_weight.toFixed(3)}kg`);
+
+        }
+        game.on_fish_caught = function(){
+            inventory.load(game.inventory)
+            inventory.update_items();
+        }
+
+        inventory.load(
+            game.inventory
+        )
+        inventory.update_items();
+
+
+    </script>
+
 
 </body>
 

@@ -13,7 +13,7 @@ export class Level {
     on_ready() {
 
     }
-    //reserver for object ready logic
+    //reservr for object ready logic
     #ready() {
         this.on_ready()
     }
@@ -26,6 +26,7 @@ export class Level {
         )
         this.#ready()
     }
+    //Note: could make this async, just need to reslove on load (also maybe rename this?)
     setup(element, background, world = this.world) {
         this.element = element;
         this.background = background;

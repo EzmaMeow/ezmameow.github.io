@@ -10,6 +10,18 @@ export class Fish extends Entity {
     //be .8 at depth of 1
     _depth = 1.0;
     ai_state = 'idle';
+    type = {}
+    weight_ratio = 1.0;
+    get min_weight(){
+        return this.type.min_weight || 0.001;
+    }
+    get max_weight(){
+        return this.type.max_weight || 1.000;
+    }
+    get weight(){
+        //console.log(`${min_weight} ${max_weight} ${this.weight_ratio}`)
+        return this.min_weight + (this.max_weight - this.min_weight) * this.weight_ratio;
+    } //used as static info about the fish povided by json
     get depth() {
         return this._depth;
     }
@@ -141,6 +153,13 @@ export class Fish extends Entity {
 
 
     }
+    save(){
+        const data = super.save();
+        data.depth = this.depth;
+        data.base_speed = this.base_speed;
+        //ai state could be save too, but will need to redeisgn it first
+        return data;
+    }
     load(data) {
         //could also have arrays or object rep random math unless there is a sting eva for that already 
         //(look like evaluateExpression can handle math, but the random numbers would have to added via code)
@@ -151,6 +170,14 @@ export class Fish extends Entity {
         }
         if (data.base_speed !== undefined) {
             this.base_speed = parseFloat(data.base_speed) || 0.0;
+        }
+        //type need to be an object. ideally it is parced before this
+        //so should not need to convert it (just make sure it is an object)
+        if (data.type !== undefined) {
+            this.type = data.type || {};
+        }
+        if (data.weight_ratio !== undefined) {
+            this.weight_ratio = parseFloat(data.weight_ratio) || 1.0;
         }
     }
     //const build the nessary peices while setup assign world related data

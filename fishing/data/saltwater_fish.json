@@ -1,0 +1,79 @@
+{
+	"Mola": {
+		"name":"Mola",
+		"min_weight":247.0,
+		"max_weight":1000.0,
+		"saltwater": true,
+		"freshwater": false
+	},
+	"Tuna": {
+		"name":"Tuna",
+		"min_weight":20.0,
+		"max_weight":600.0,
+		"saltwater": true,
+		"freshwater": false
+	},
+	"Red Snapper": {
+		"name":"Red Snapper",
+		"min_weight":2.0,
+		"max_weight":20.0,
+		"saltwater": true,
+		"freshwater": false
+	},
+	"Grouper": {
+		"name":"Grouper",
+		"min_weight":5.0,
+		"max_weight":300.0,
+		"saltwater": true,
+		"freshwater": false
+	},
+	"Halibut": {
+		"name":"Halibut",
+		"min_weight":5.0,
+		"max_weight":300.0,
+		"saltwater": true,
+		"freshwater": false
+	},
+	"Marlin": {
+		"name":"Marlin",
+		"min_weight":50.0,
+		"max_weight":700.0,
+		"saltwater": true,
+		"freshwater": false
+	},
+	"Swordfish": {
+		"name":"Swordfish",
+		"min_weight":50.0,
+		"max_weight":650.0,
+		"saltwater": true,
+		"freshwater": false
+	},
+	"Tarpon": {
+		"name":"Tarpon",
+		"min_weight":10.0,
+		"max_weight":150.0,
+		"saltwater": true,
+		"freshwater": false
+	},
+	"Sea Bass": {
+		"name":"Sea Bass",
+		"min_weight":1.0,
+		"max_weight":50.0,
+		"saltwater": true,
+		"freshwater": false
+	},
+	"Mackerel": {
+		"name":"Mackerel",
+		"min_weight":0.5,
+		"max_weight":10.0,
+		"saltwater": true,
+		"freshwater": false
+	},
+	"Dorado": {
+		"name":"Dorado",
+		"min_weight":5.0,
+		"max_weight":40.0,
+		"saltwater": true,
+		"freshwater": false
+	}
+}
