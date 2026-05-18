@@ -140,6 +140,24 @@ export class Inventory {
         //and sorted items or something be used for display
 
     }
+    has_previous_page(){
+        return this.page > 0;
+    }
+    has_next_page(){
+        return (this.page+1) * this.max_items < this.inventory_data.length;
+    }
+    next_page(){
+        if (this.has_next_page()){
+            this.page += 1;
+            this.update_items();
+        }
+    }
+    previous_page(){
+        if (this.has_previous_page()){
+            this.page -= 1;
+            this.update_items();
+        }
+    }
     //the item data may be in two formats. the array is a static item and a meta item
     //where the meta overrides the static item properties at times or just adds new ones
     //the non_array is a meta item that extends a static item or acts as a wrapper of the static item
@@ -183,7 +201,6 @@ export class Inventory {
             item.hidden = false;
             const item_data = this.inventory_data[page_position]
             this.update_item(item,item_data);
-
         }
     }
     remove_item(item, parent = this.element) {
@@ -207,9 +224,10 @@ export class Inventory {
         this.items.push(item);
         return item
     }
-    constructor(parent_id = 'inventory', max_items = 24) {
+    constructor(parent_id = 'inventory', max_items = 10) {
         const parent = document.getElementById(parent_id);
         this.max_items = max_items;
+        this.page = 0;
         this.element = document.createElement('div');
         parent.appendChild(this.element);
         this.items = [];
