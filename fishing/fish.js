@@ -12,6 +12,7 @@ export class Fish extends Entity {
     ai_state = 'idle';
     type = {}
     weight_ratio = 1.0;
+    difficulty = 0.0;
     get min_weight(){
         return this.type.min_weight || 0.001;
     }

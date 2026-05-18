@@ -12,9 +12,9 @@ export class World {
         256.0,
     ]
     random_point_in_nav_area(agent_width = 16.0, agent_height = 16.0, results = [0.0, 0.0]) {
-        const minX = this.nav_area[0] * this.ppu[0];
+        const minX = this.nav_area[0] * this.ppu[0] + agent_width;
         const maxX = this.nav_area[1] * this.ppu[0] - agent_width;
-        const minY = this.nav_area[2] * this.ppu[1];
+        const minY = this.nav_area[2] * this.ppu[1] + agent_height;
         const maxY = this.nav_area[3] * this.ppu[1] - agent_height;
         results[0] = Math.random() * (maxX - minX) + minX;
         results[1] = Math.random() * (maxY - minY) + minY;

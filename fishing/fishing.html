@@ -92,8 +92,11 @@
                     style="width: 75%;"><br>
             </details>
             <details class="text-center">
-                <summary>Inventory</summary>
+                <summary>Inventory(WIP)</summary>
                 <div id='inventory'></div>
+                <br>
+                <button id="inventory_previous">Back</button>
+                <button id="inventory_next">Next</button>
             </details>
         </div>
     </div>
@@ -107,6 +110,21 @@
         import { Inventory } from "/scripts/inventory.js"
         const game = await start_fishing_game();
         const inventory = new Inventory('inventory')
+
+        const inventory_previous_button = document.getElementById('inventory_previous');
+        const inventory_next_button = document.getElementById('inventory_next');
+        function update_inventory_buttons(){
+            inventory_previous_button.hidden = !inventory.has_previous_page();
+            inventory_next_button.hidden = !inventory.has_next_page();
+        }
+        inventory_previous_button.addEventListener('click', (event) => {
+            inventory.previous_page();
+            update_inventory_buttons()
+        })
+        inventory_next_button.addEventListener('click', (event) => {
+            inventory.next_page();
+            update_inventory_buttons()
+        })
 
         inventory.update_item = function(item, item_data) {
             item.icon_src = this.get_item_data_property(item_data, 'icon_src', "/assets/anim_profile_pic.gif")
@@ -127,12 +145,14 @@
         game.on_fish_caught = function(){
             inventory.load(game.inventory)
             inventory.update_items();
+            update_inventory_buttons()
         }
 
         inventory.load(
             game.inventory
         )
         inventory.update_items();
+        update_inventory_buttons()
 
 
     </script>

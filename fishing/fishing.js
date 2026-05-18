@@ -27,6 +27,7 @@ export class Fishing_Game {
     save_key = 'fishing_save_state';
     save_version = 1;
     dirty_save_state = false;
+    catch_bonus = 0.5; //this is to allow one to wait between catches
     //should have them assign later
     elements = {
         sound_volume: undefined,
@@ -148,6 +149,9 @@ export class Fishing_Game {
             this.save();
             this.dirty_save_state = false;
         }
+        if (this.catch_bonus < 1.25){
+            this.catch_bonus += delta
+        }
         requestAnimationFrame(() => this.update());
     }
     pause() {
@@ -171,11 +175,14 @@ export class Fishing_Game {
         const fish_types = Object.keys(this.fish_data);
         fish.type = this.fish_data[fish_types[Math.floor(Math.random() * fish_types.length)]] || {};
         fish.weight_ratio = Math.random();
+        const weight = fish.type.min_weight + (fish.type.max_weight - fish.type.min_weight) * fish.weight_ratio;
+        const size = weight<=10 ? 0.25 + (0.75 - 0.25) * weight/10.0 :0.75 + (3.0 - 0.75) * (weight-10)/1000.0;
+        fish.difficulty = size/3.0;
         fish.set_position(random_point[0], random_point[1]);
-        fish.base_speed = Math.random() * 8 + 8;
+        fish.base_speed = Math.random() * 10 + 5 + size*2;
         fish.set_scale(
-            Math.random() * 1.5 + 0.5,
-            Math.random() * 1.5 + 0.5
+            Math.random() + size,
+            Math.random() + size
         )
         fish.depth = depth;
     }
@@ -220,26 +227,29 @@ export class Fishing_Game {
             }
         }
         //console.log(this.inventory)
-        this.score += Math.max(Math.floor((catch_data.fish.scale[0] + catch_data.fish.scale[1]) * 0.75), 1)
+        this.score += Math.max(Math.floor(catch_data.fish.difficulty*100), 1)
         this.elements.score.innerHTML = `Score: ${this.score}`;
         //console.log(catch_data.fish.type, ' ', catch_data.fish.weight, 'kg')
         this.update_fish(catch_data.fish);
         this.dirty_save_state = true;
+        this.catch_bonus = 0.25;
         this.on_fish_caught();
     }
     failed_catch(catch_data = {}) {
         this.elements.quick_splash_sound.pause();
         this.elements.quick_splash_sound.currentTime = 0;
         this.elements.quick_splash_sound.play();
+        this.catch_bonus = 0.25;
     }
     fish_clicked(event, fish) {
         const catch_data = {
             fish: fish,
-            catch_roll: Math.random()
+            catch_roll: Math.random(),
+            difficulty: fish.difficulty*0.5 + (1.0 - fish.depth)*0.75 //0.75 is an offset so deep fishes can be impossible (under 0.5 but in this case 0.4-0.3)
         }
-        if (fish.depth < 1.0 && !(catch_data.catch_roll <= fish.depth)) {
+        if (catch_data.catch_roll*this.catch_bonus <= catch_data.difficulty*2) {   
             catch_data.sucess = false;
-            this.failed_catch(catch_data);
+            this.failed_catch(catch_data) 
             return
         }
         catch_data.sucess = true;
