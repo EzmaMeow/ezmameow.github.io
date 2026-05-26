@@ -1,0 +1,187 @@
+<!doctype html>
+
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>Game</title>
+    <link rel="stylesheet" href="/styles.css">
+    <style>
+        /* Container that holds all images */
+        .level-container {
+            position: relative;
+            width: 100%;
+            /* Responsive width */
+            /* max-width: 800px;*/
+            margin: auto;
+        }
+
+        /* Main large image */
+        .background-image {
+            width: 100%;
+            height: auto;
+            display: block;
+            user-drag: none;
+            -webkit-user-drag: none;
+        }
+    </style>
+    <link rel="icon" href="/assets/anim_profile_pic.gif" type="image/x-icon">
+</head>
+
+<body>
+
+    <div id="nav">
+        <ul>
+            <li><a href="/index.html">Home</a></li>
+            <li><a href="/posts.html#type=media">Media</a></li>
+            <li><a href="/posts.html#type=projects">Projects</a></li>
+            <li><a href="/posts.html#type=posts">Posts</a></li>
+            <li><a href="/contact.html">Contact</a></li>
+            <li><a class="active" href="./fishing.html">Fishing</a></li>
+        </ul>
+    </div>
+
+    <div id="background">
+    </div>
+
+    <div id="body_container">
+        <div class="container text-center">
+            <b>Radio Player</b><br>
+            <audio id="radioAudio" preload="none"></audio>
+            <button id="toggleRadio">Waiting</button>
+            <details>
+                <summary>Radio Options</summary><br>
+                <label>Use Local Storage: <input type="checkbox" class="radioOptions" data-property="useLocalStorage"
+                        title="Uses localStorage to store options untill cleared."></label><br>
+                <label>Autoplay: <input type="checkbox" class="radioOptions" data-property="autoplay"></label><br><br>
+                Volume: <input type="range" min="0" max="1" step="0.01" value="0.5" class="radioOptions"
+                    data-property="volume" style="width: 75%;"><br><br>
+                Url: <input type="text" id="streamUrl"
+                    placeholder="Enter stream URL (e.g. http://...) or radio garden channel id"
+                    value="https://radio.garden/listen/wcpe-the-classical-station/dNa5l6AK" style="width:75%;"
+                    class="radioOptions" data-property="src">
+                <button id="radioDefaultStation">⟲</button>
+            </details>
+        </div>
+        <div class="flex-break"></div>
+
+        <div class="info_container">
+            <div class="info_title">
+                <h1 id='room_name'>Game</h1>
+            </div>
+            <div class="info_content">
+                <p class='text-center'>
+                    Info
+                </p>
+
+            </div>
+            <div class="level-container" id="world">
+
+            </div>
+        </div>
+    </div>
+
+    <audio id="splash_sound" src="/assets/splash.wav"></audio>
+    <audio id="quick_splash_sound" src="/assets/quick_splash.wav"></audio>
+
+    <script type="module" src="/radio_player.js"></script>
+    <script type="module">
+        import { Renderer } from "./renderer.js"
+        import { RenderObject2d, RenderObjectManager, RenderObject, ImageRenderObject, PerspectiveCamera } from "./render_object_manager.js"
+
+        const scene_container = document.getElementById('world')
+        const scene_canvas = document.createElement("canvas");
+
+        const test_image = new Image();
+        test_image.src = "/assets/anim_profile_pic.gif";
+        const test_camera = new PerspectiveCamera()
+        const test_object = new ImageRenderObject(test_image);
+        //const test_object = new RenderObject2d(RenderObject.drawImageData(test_image));
+
+        const render_object_manager = new RenderObjectManager();
+        const renderer = new Renderer();
+        renderer.renderObjectManager = render_object_manager;
+        renderer.camera = test_camera;
+        render_object_manager.add(test_object);
+
+        function resize_canvas() {
+            const rect = scene_container.getBoundingClientRect();
+            scene_canvas.width = rect.width;
+            scene_canvas.height = rect.width; //keep it square, but may need to define a min size
+        }
+
+        //scene_canvas.id = "myCanvas";
+        scene_canvas.style.border = "1px solid black";
+        scene_canvas.style.width = 'calc(100% - 2px)'//this corrects offsets applied via borders and such, just rember it draws to the bottom right so things get push in the direction
+
+        //NOTE: if a camera is used, it also need to have it dim adjusted. also the viewport too if it not reading the canvas directly per update
+        resize_canvas()
+
+        scene_container.appendChild(scene_canvas);
+        test_object.onImageLoaded = function () {
+            console.log('MEOW?')
+            //test_image.onload = function () {
+            //test_object.sizeX = 16//test_object.width;
+            //test_object.sizeY = 16//test_object.height;
+            renderer.render(scene_canvas)
+        }
+
+
+
+        //note: window.ResizeObserver may be useful too
+        window.addEventListener('resize', resize_canvas);
+
+        document.addEventListener('keydown', function (event) {
+            let changed = false
+            // event.key will be one of: "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"
+            switch (event.key) {
+                case 'ArrowUp':
+                    //test_object.posY += 8
+                    test_camera.y -= 8
+                    changed = true
+                    break;
+                case 'ArrowDown':
+                    test_camera.y += 8
+                    changed = true
+                    break;
+                case 'ArrowLeft':
+                    test_camera.x -= 8
+                    changed = true
+                    break;
+                case 'ArrowRight':
+                    test_camera.x += 8
+                    changed = true
+                    break;
+                case 'w':
+                    test_object.posY -= 8
+                    changed = true
+                    break;
+                case 's':
+                    test_object.posY += 8
+                    changed = true
+                    break;
+                case 'a':
+                    test_object.posX -= 8
+                    changed = true
+                    break;
+                case 'd':
+                    test_object.posX += 8
+                    changed = true
+                    break;
+                default:
+                    // Ignore other keys
+                    return;
+            }
+            if (changed) {
+                console.log(test_camera)
+                renderer.render(scene_canvas)
+            }
+        })
+
+    </script>
+
+
+</body>
+
+</html>
