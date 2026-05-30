@@ -55,36 +55,48 @@ export class Renderer {
     }
     //todo: rename this to rep multiply the two mat (view(mat4), object(mat3 or mat4))
     //also it now translate it as well
-    multiplyMat4(a, b, target = new Float32Array(16)) {
-        const isMat3 = b.length === 9;
-        for (let row = 0; row < 4; row++) {
-            for (let col = 0; col < 4; col++) {
-                if (isMat3) {
-                    target[col * 4 + row] =
-                        (col < 3 ?
-                            a[0 * 4 + row] * b[col * 3 + 0] +
-                            a[1 * 4 + row] * b[col * 3 + 1] +
-                            a[2 * 4 + row] * b[col * 3 + 2]
-                            : a[3 * 4 + row]
-                        );
-                    target[3] = a[3]+b[2]
-                    target[7] = a[7]+b[5]
-                    target[11] = 0
-                }
-                else {
-                    target[col * 4 + row] =
-                        a[0 * 4 + row] * b[col * 4 + 0] +
-                        a[1 * 4 + row] * b[col * 4 + 1] +
-                        a[2 * 4 + row] * b[col * 4 + 2] +
-                        a[3 * 4 + row] * b[col * 4 + 3];
-                    target[3] = a[3]+b[3]
-                    target[7] = a[7]+b[7]
-                    target[11] = a[11]+b[11]
-                }
-            }
+    calcMvMatrix(m, v, target = new Float32Array(16)) {
+        if (m.length === 9) {
+            target[0] = v[0] * m[0] + v[1] * m[3];
+            target[1] = v[0] * m[1] + v[1] * m[4];
+            target[2] = 0;
+
+            target[3] = v[3] + m[2];
+
+            target[4] = v[4] * m[0] + v[5] * m[3];
+            target[5] = v[4] * m[1] + v[5] * m[4];
+            target[6] = 0;
+
+            target[7] = v[7] + m[5];
+
+            target[8] = 0;
+            target[9] = 0;
+            target[10] = 1;
+            target[11] = 0;
+
         }
-        return target;
+        else {
+            target[0] = v[0] * m[0] + v[1] * m[4] + v[2] * m[8];
+            target[1] = v[0] * m[1] + v[1] * m[5] + v[2] * m[9];
+            target[2] = v[0] * m[2] + v[1] * m[6] + v[2] * m[10];
+
+            target[3] = v[3] + m[3];
+
+            target[4] = v[4] * m[0] + v[5] * m[4] + v[6] * m[8];
+            target[5] = v[4] * m[1] + v[5] * m[5] + v[6] * m[9];
+            target[6] = v[4] * m[2] + v[5] * m[6] + v[6] * m[10];
+
+            target[7] = v[7] + m[7];
+
+            target[8] = v[8] * m[0] + v[9] * m[4] + v[10] * m[8];
+            target[9] = v[8] * m[1] + v[9] * m[5] + v[10] * m[9];
+            target[10] = v[8] * m[2] + v[9] * m[6] + v[10] * m[10];
+
+            target[11] = v[11] + m[11];
+        }
+        return target
     }
+
     //NOTE on sorting. may need to have a manager for the objects list. update it fully when static stuff change
     //and remove and added when dynmaic stuff change (using a type that do not move entries down or do so efficently)
     //also could add signals and update if anything dirty
@@ -94,7 +106,7 @@ export class Renderer {
     //((layer << 48) |(depth << 32) |((y & 0xFFFF) << 16) |(x & 0xFFFF))
     //can also local the x and y base on camera x and y so the value stays withing a reasonable amount (unless res is crazy(pixel rep 1km space nonsense))
     render(target = this.target, objectManager = this.renderObjectManager, viewport = this.viewport, camera = this.camera) {
-        
+
         if (!target) {
             console.log('no render target provided')
             return
@@ -109,15 +121,15 @@ export class Renderer {
             viewMatrix[10] = 1
             viewMatrix[15] = 1
         }
-        
+
         //may need to clamp view matrix with viewport
         //if (viewport){ }
-        if (objectManager) {   
-            const renderList = objectManager.getRenderList(viewMatrix,true)
+        if (objectManager) {
+            const renderList = objectManager.getRenderList(viewMatrix, true)
             console.log(renderList)
             for (const object of renderList) {
                 console.log('rendering', object)
-                this.multiplyMat4(viewMatrix, object.transformation, mvMatrix) //NOTE: may need to catch this in the object. probably could caculate it when fetching the list(object manager)
+                this.calcMvMatrix(object.transformation, viewMatrix, mvMatrix) //NOTE: may need to catch this in the object. probably could caculate it when fetching the list(object manager)
                 object.draw(context, mvMatrix[3], mvMatrix[7], mvMatrix[0], mvMatrix[5])//NOTE: using target bounds for now, but should pull it from the view matrix and
             }
         }
