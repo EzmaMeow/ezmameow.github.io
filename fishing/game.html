@@ -95,15 +95,20 @@
 
         const test_image = new Image();
         test_image.src = "/assets/anim_profile_pic.gif";
+        const test_background_image = new Image();
+        test_background_image.src = "/assets/background.jpg";
         const test_camera = new PerspectiveCamera()
-        const test_object = new ImageRenderObject(test_image);
-        //const test_object = new RenderObject2d(RenderObject.drawImageData(test_image));
+        const test_object = new ImageRenderObject(test_image,64,64);
+        const test_background = new ImageRenderObject(test_background_image,320,320);
 
+        //const test_object = new RenderObject2d(RenderObject.drawImageData(test_image));
         const render_object_manager = new RenderObjectManager();
         const renderer = new Renderer();
         renderer.renderObjectManager = render_object_manager;
-        renderer.camera = test_camera;
+        //renderer.camera = test_camera;
+
         render_object_manager.add(test_object);
+        render_object_manager.add(test_background);
 
         function resize_canvas() {
             const rect = scene_container.getBoundingClientRect();
@@ -124,6 +129,15 @@
             //test_image.onload = function () {
             //test_object.sizeX = 16//test_object.width;
             //test_object.sizeY = 16//test_object.height;
+            //test_object.xRenderOffset = -test_object.width;
+            //test_object.yRenderOffset = -test_object.height;
+            renderer.render(scene_canvas)
+        }
+        test_background.onImageLoaded = function () {
+            //NOTE: the issues is not really with how it rendering, but the check is base on the object's hight/width than what it is overlaping with
+            //so offseting itself by the width/hight wont work since the diffrence is base on itself at the time of sorting
+            test_background.xRenderOffset = test_background.width;
+            test_background.yRenderOffset = test_background.height;
             renderer.render(scene_canvas)
         }
 

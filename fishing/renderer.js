@@ -73,7 +73,6 @@ export class Renderer {
             target[9] = 0;
             target[10] = 1;
             target[11] = 0;
-
         }
         else {
             target[0] = v[0] * m[0] + v[1] * m[4] + v[2] * m[8];
@@ -126,12 +125,11 @@ export class Renderer {
         //if (viewport){ }
         if (objectManager) {
             const renderList = objectManager.getRenderList(viewMatrix, true)
-            console.log(renderList)
             for (const object of renderList) {
-                console.log('rendering', object)
                 this.calcMvMatrix(object.transformation, viewMatrix, mvMatrix) //NOTE: may need to catch this in the object. probably could caculate it when fetching the list(object manager)
                 object.draw(context, mvMatrix[3], mvMatrix[7], mvMatrix[0], mvMatrix[5])//NOTE: using target bounds for now, but should pull it from the view matrix and
             }
+            console.log(renderList)
         }
 
         //NOTE: viewport is extra data with canvas, but could be used to render a section of the camera

@@ -5,7 +5,18 @@ export class RenderObject {
     _onRenderChanged = undefined; //callback to the object manager. //called when sortkey change or anything that the object manager need to listen to
     _sortKey = 0;
     #sortRecord = new Float32Array(4); //x,y,z,layer
+    get sortRecord() {
+        if (this._dirty) {
+            this.#sortRecord[0] = this.xRenderOrder;
+            this.#sortRecord[1] = this.yRenderOrder;
+            this.#sortRecord[2] = this.zRenderOrder;
+            this.#sortRecord[3] = this.layer;
+            this._dirty = false
+        }
+        return this.#sortRecord
+    }
     #layer = 0;
+    _dirty = true
     get layer() { return this.#layer }
     set layer(value) {
         if (value != this.#layer) {
@@ -15,6 +26,7 @@ export class RenderObject {
     }
     renderChange() {
         if (this._onRenderChanged) {
+            this._dirty = true
             this._onRenderChanged(this)
         }
     }
@@ -52,6 +64,7 @@ export class RenderObject {
             this.#sortRecord[1] = this.yRenderOrder;
             this.#sortRecord[2] = this.zRenderOrder;
             this.#sortRecord[3] = this.layer;
+            this._dirty = false
         }
         return this.#sortRecord
     }
@@ -69,24 +82,27 @@ export class RenderObject {
 //might extend each other though
 //NOTE: MAY NEED TO USE ESP (TINY VALUE) WHEN EVER 0 IS PASSES for the size
 export class RenderObject2d extends RenderObject {
-    static makeTransformation(){
+    static makeTransformation() {
         const transformation = new Float32Array(9)
         transformation[0] = 1
         transformation[4] = 1
         transformation[8] = 1
         return transformation;
     }
-    height = 1;
-    width = 1;
+    
     #scaleX = 1.0;
     get scaleX() { return this.#scaleX }
     #scaleY = 1.0;
     get scaleY() { return this.#scaleY }
+    baseHeight = 1;
+    get height(){return this.baseHeight * this.#scaleY}
+    baseWidth = 1;
+    get width(){return this.baseWidth * this.#scaleX;}
     setScale(x = 1.0, y = 1.0) {
         this.scaleX = x;
         this.scaleY = y;
-        this.sizeX = this.width * this.#scaleX;
-        this.sizeY = this.height * this.#scaleY;
+        this.sizeX = this.height;
+        this.sizeY = this.width;
     }
     get posX() {
         return this.transformation[Math.sqrt(this.transformation.length) - 1];
@@ -151,19 +167,20 @@ export class RenderObject2d extends RenderObject {
         this.transformation[Math.sqrt(this.transformation.length)] = this.upX * value;
         this.transformation[Math.sqrt(this.transformation.length) + 1] = this.upY * value;
     }
-    get yRenderOrder() { return this.posY + this.yRenderOffset }
+    //may need diffrent sorting anchors or rendering anchors. the issue is the height needs to be offset 
+    get yRenderOrder() { return this.posY + this.yRenderOffset  }
     get xRenderOrder() { return this.posX + this.xRenderOffset }
 
-    constructor(width=0,height=0) {
+    constructor(width = 0, height = 0) {
         super();
-        this.width = width;
-        this.height = height;
+        this.baseWidth = width;
+        this.baseHeight = height;
         this.transformation = this.constructor.makeTransformation()
     }
 }
 export class RenderObject3d extends RenderObject2d {
-    static makeTransformation(){
-        const transformation =  new Float32Array(16)
+    static makeTransformation() {
+        const transformation = new Float32Array(16)
         transformation[0] = 1
         transformation[5] = 1
         transformation[10] = 1
@@ -251,26 +268,27 @@ export class RenderObject3d extends RenderObject2d {
         this.transformation[Math.sqrt(this.transformation.length) + 2] = this.forwardZ * value;
     }
     get zRenderOrder() { return this.posZ + this.zRenderOffset }
-    constructor(width=0,height=0,depth=0) {
-        super(width,height);
+
+    constructor(width = 0, height = 0, depth = 0) {
+        super(width, height);
         this.depth = depth;
         this.transformation = this.constructor.makeTransformation()
     }
 }
 
-export class ImageRenderObject extends RenderObject2d{
+export class ImageRenderObject extends RenderObject2d {
     #image
     imageLoaded() {
-        if (!this.width) {
-            this.width = this.image.naturalWidth || this.image.videoWidth || this.image.width || 0
+        if (!this.baseWidth) {
+            this.baseWidth = this.image.naturalWidth || this.image.videoWidth || this.image.width || 0
         }
-        if (!this.height) {
-            this.height = this.image.naturalHeight || this.image.videoHeight || this.image.height || 0;
+        if (!this.baseHeight) {
+            this.baseHeight = this.image.naturalHeight || this.image.videoHeight || this.image.height || 0;
         }
-        this.sizeX = this.width;
-        this.sizeY = this.height;
+        this.sizeX = this.baseWidth;
+        this.sizeY = this.baseHeight;
         console.log('image loaded', this)
-        if(this.onImageLoaded){
+        if (this.onImageLoaded) {
             this.onImageLoaded();
         }
     }
@@ -291,8 +309,8 @@ export class ImageRenderObject extends RenderObject2d{
     imageCoordX = 0.0
     imageCoordY = 0.0
     draw(canvasContext, x, y, width, height) {
-        console.log('drawing:',width, height)
-        canvasContext.drawImage(this.image, this.imageCoordX, this.imageCoordY, this.width, this.height, x, y, width, height)
+        console.log('drawing:', width, height)
+        canvasContext.drawImage(this.image, this.imageCoordX, this.imageCoordY, this.image.width, this.image.height, x, y, width, height)
     }
     deconstructor() {
         super.deconstructor();
@@ -302,48 +320,48 @@ export class ImageRenderObject extends RenderObject2d{
         this.#image = null;
     }
     constructor(image, width = 0, height = 0) {
-        super(width,height);
+        super(width, height);
         this.image = image;
 
     }
 }
-    //mat4
-    //0,    1,  2,  3
-    //4,    5,  6,  7
-    //8,    9,  10, 11
-    //12,   13, 14, 15
-    //this.transformation[0]=1
-    //this.transformation[5]=1
-    //this.transformation[10]=1
-    //this.transformation[15]=1
+//mat4
+//0,    1,  2,  3
+//4,    5,  6,  7
+//8,    9,  10, 11
+//12,   13, 14, 15
+//this.transformation[0]=1
+//this.transformation[5]=1
+//this.transformation[10]=1
+//this.transformation[15]=1
 
-    //mat3
-    //0,    1,  2
-    //3,    4,  5
-    //6,    7,  8
-    //this.transformation[0]=1
-    //this.transformation[4]=1
-    //this.transformation[8]=1
+//mat3
+//0,    1,  2
+//3,    4,  5
+//6,    7,  8
+//this.transformation[0]=1
+//this.transformation[4]=1
+//this.transformation[8]=1
 
 //test example of a perspective camera
-export class PerspectiveCamera{
-        fov = 90;
-        aspect = 1;
-        near = 1e-6;
-        far = 100;
-        x=0.0
-        y=0.0
-        z=0.0
-        getViewMatrix(targetMatrix = new Float32Array(16)) {
+export class PerspectiveCamera {
+    fov = 90;
+    aspect = 1;
+    near = 1e-6;
+    far = 100;
+    x = 0.0
+    y = 0.0
+    z = 0.0
+    getViewMatrix(targetMatrix = new Float32Array(16)) {
         const f = 1.0 / Math.tan(this.fov / 2);
         const nf = 1 / (this.near - this.far);
-        targetMatrix[0]=f / this.aspect;
-        targetMatrix[3]= -this.x;
-        targetMatrix[5]=f;
-        targetMatrix[7]= -this.y;
-        targetMatrix[10]=(this.far + this.near) * nf;
-        targetMatrix[11]=-this.z;
-        targetMatrix[14]=(2 * this.far * this.near) * nf;
+        targetMatrix[0] = f / this.aspect;
+        targetMatrix[3] = -this.x;
+        targetMatrix[5] = f;
+        targetMatrix[7] = -this.y;
+        targetMatrix[10] = (this.far + this.near) * nf;
+        targetMatrix[11] = -this.z;
+        targetMatrix[14] = (2 * this.far * this.near) * nf;
         return targetMatrix;
     }
 }
@@ -367,7 +385,7 @@ export class RenderObjectManager {
         //this.#dirtyObjects.add(object);
     }
     add(renderObject = new RenderObject()) {
-        
+
         if (!renderObject || this.#object.has(renderObject)) {
             return
         }
@@ -388,32 +406,46 @@ export class RenderObjectManager {
         //remove data to render list
         return removed
     }
-    generateSortKey(object, viewMatrix = []) {
-        const record = object.getSortRecord();
-        object._sortKey = ((record[3] & 0x1F) * 2 ** 48) +  // 0-31?
-            ((record[2] & 0xFFFF) * 2 ** 32) +
-            ((record[1] & 0xFFFF) * 2 ** 16) +
-            (record[0] & 0xFFFF);
-        return object._sortKey
+    //generateSortKey(object, viewMatrix = []) {
+    //    const record = object.getSortRecord();
+    //    object._sortKey = ((record[3] & 0x1F) * 2 ** 48) +
+    //        ((record[2] & 0xFFFF) * 2 ** 32) +
+    //        ((record[1] & 0xFFFF) * 2 ** 16) +
+    //        (record[0] & 0xFFFF);
+    //    return object._sortKey
 
-    }
+    //}
     renderList = [];
     getRenderList(viewMatrix = [], dirty = false) {
         //regen the whole list
+        //note: camera might mess up render order if perspective
         if (this.#dirty || dirty) {
-            console.log('mew?')
+            const axisOffset = 1000000
+            const axisScale = 2000000
             this.renderList = []
             for (const object of this.#object) {
-                console.log(object.visible)
                 if (!object.visible) { continue }
-                this.generateSortKey(object, viewMatrix)
+                //could use the view matrix to cull this not in bounds. issue is making sure rotation is handled correctly
                 this.renderList.push(object);
-                console.log(object)
             }
             this.renderList.sort((a, b) => {
-                a._sortKey - b._sortKey
+                const ar = a.sortRecord;
+                const br = b.sortRecord;
+                //NOTE: drawing of objects is done in a way that breaks this so they need their x and y offsets to be base on their size
+                if (ar[3] != br[3]) return ar[3] - br[3]
+            
+                const z = ar[2] - br[2];
+                if (z !== 0) return z;
+                
+                const y = ar[1] - br[1];
+                console.log('y:',ar[1] , br[1],y);
+                if (y !== 0) return y;
+
+                console.log('x:',ar[0] , br[0], ar[0] - br[0]);
+                return ar[0] - br[0];
             });
             this.#dirty = false
+            console.log(this.renderList)
         }
 
         return this.renderList
