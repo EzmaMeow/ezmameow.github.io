@@ -50,8 +50,8 @@ export class Renderer {
 
             return this.viewMatrix
         },
-        worldToScreen(pos, viewport, target) { return target },
-        screenToWorld(pos, viewport, target) { return target }
+        //worldToScreen(pos, viewport, target) { return target },
+        //screenToWorld(pos, viewport, target) { return target }
     }
     //todo: rename this to rep multiply the two mat (view(mat4), object(mat3 or mat4))
     //also it now translate it as well
@@ -61,37 +61,46 @@ export class Renderer {
             target[1] = v[0] * m[1] + v[1] * m[4];
             target[2] = 0;
 
-            target[3] = v[3] + m[2];
+            target[12] = v[12] + m[6];
 
             target[4] = v[4] * m[0] + v[5] * m[3];
             target[5] = v[4] * m[1] + v[5] * m[4];
             target[6] = 0;
 
-            target[7] = v[7] + m[5];
+            target[13] = v[13] + m[7];
 
             target[8] = 0;
             target[9] = 0;
             target[10] = 1;
             target[11] = 0;
+            target[3] = 0;
+            target[7] = 0;
+            target[11] = 0;
+            target[15] = 1;
         }
         else {
             target[0] = v[0] * m[0] + v[1] * m[4] + v[2] * m[8];
             target[1] = v[0] * m[1] + v[1] * m[5] + v[2] * m[9];
             target[2] = v[0] * m[2] + v[1] * m[6] + v[2] * m[10];
 
-            target[3] = v[3] + m[3];
+            target[12] = v[12] + m[12];
 
             target[4] = v[4] * m[0] + v[5] * m[4] + v[6] * m[8];
             target[5] = v[4] * m[1] + v[5] * m[5] + v[6] * m[9];
             target[6] = v[4] * m[2] + v[5] * m[6] + v[6] * m[10];
 
-            target[7] = v[7] + m[7];
+            target[13] = v[13] + m[13];
 
             target[8] = v[8] * m[0] + v[9] * m[4] + v[10] * m[8];
             target[9] = v[8] * m[1] + v[9] * m[5] + v[10] * m[9];
             target[10] = v[8] * m[2] + v[9] * m[6] + v[10] * m[10];
 
-            target[11] = v[11] + m[11];
+            target[14] = v[14] + m[14];
+
+            target[3] = 0;
+            target[7] = 0;
+            target[11] = 0;
+            target[15] = 1;
         }
         return target
     }
@@ -127,7 +136,8 @@ export class Renderer {
             const renderList = objectManager.getRenderList(viewMatrix, true)
             for (const object of renderList) {
                 this.calcMvMatrix(object.transformation, viewMatrix, mvMatrix) //NOTE: may need to catch this in the object. probably could caculate it when fetching the list(object manager)
-                object.draw(context, mvMatrix[3], mvMatrix[7], mvMatrix[0], mvMatrix[5])//NOTE: using target bounds for now, but should pull it from the view matrix and
+                //object.draw(context, mvMatrix[3], mvMatrix[7], mvMatrix[0], mvMatrix[5])//NOTE: using target bounds for now, but should pull it from the view matrix and
+                object.draw(context, mvMatrix[12], mvMatrix[13], mvMatrix[0], mvMatrix[5])//NOTE: using target bounds for now, but should pull it from the view matrix and
             }
             console.log(renderList)
         }

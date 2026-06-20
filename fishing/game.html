@@ -88,7 +88,7 @@
     <script type="module" src="/radio_player.js"></script>
     <script type="module">
         import { Renderer } from "./renderer.js"
-        import { RenderObject2d, RenderObjectManager, RenderObject, ImageRenderObject, PerspectiveCamera } from "./render_object_manager.js"
+        import { RenderObject2d, RenderObjectManager, RenderObject, ImageRenderObject, PerspectiveCamera, OrthogonalCamera } from "./render_object_manager.js"
 
         const scene_container = document.getElementById('world')
         const scene_canvas = document.createElement("canvas");
@@ -97,18 +97,21 @@
         test_image.src = "/assets/anim_profile_pic.gif";
         const test_background_image = new Image();
         test_background_image.src = "/assets/background.jpg";
-        const test_camera = new PerspectiveCamera()
-        const test_object = new ImageRenderObject(test_image,64,64);
-        const test_background = new ImageRenderObject(test_background_image,320,320);
+        //const test_camera = new PerspectiveCamera()
+        const test_camera = new OrthogonalCamera(1,1)
+        const test_object = new ImageRenderObject(test_image, 64, 64);
+        const test_background = new ImageRenderObject(test_background_image, 320, 320);
+        test_background.layer = -1;
 
+        test_object.setScale(2,2)
         //const test_object = new RenderObject2d(RenderObject.drawImageData(test_image));
         const render_object_manager = new RenderObjectManager();
         const renderer = new Renderer();
         renderer.renderObjectManager = render_object_manager;
-        //renderer.camera = test_camera;
+        renderer.camera = test_camera;
 
-        render_object_manager.add(test_object);
         render_object_manager.add(test_background);
+        render_object_manager.add(test_object);
 
         function resize_canvas() {
             const rect = scene_container.getBoundingClientRect();
@@ -131,6 +134,8 @@
             //test_object.sizeY = 16//test_object.height;
             //test_object.xRenderOffset = -test_object.width;
             //test_object.yRenderOffset = -test_object.height;
+            test_object.onClick = function () { console.log('meow') }
+            test_object.capabilityFlags |= test_object.CAPABILITY_FLAGS.CLICKABLE;
             renderer.render(scene_canvas)
         }
         test_background.onImageLoaded = function () {
@@ -188,9 +193,18 @@
                     return;
             }
             if (changed) {
-                console.log(test_camera)
+                //console.log(test_camera)
                 renderer.render(scene_canvas)
             }
+        })
+
+        scene_canvas.addEventListener('click', function (event) {
+            const rect = scene_canvas.getBoundingClientRect();
+
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+
+            render_object_manager.onClick(x,y,0,1,renderer.camera)
         })
 
     </script>
