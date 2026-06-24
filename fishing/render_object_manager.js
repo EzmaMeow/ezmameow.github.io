@@ -131,100 +131,23 @@ export class RenderObject2d extends RenderObject {
     get height() { return this.baseHeight * this._scale[1] }
     baseWidth = 1;
     get width() { return this.baseWidth * this._scale[0]; }
+    updateSize(){
+        Mat3.setScale(this.transformation, this.width, this.height)
+    }
     setScale(x = 1.0, y = 1.0) {
         this._scale[0] = x;
         this._scale[1] = y;
-        Mat3.setScale(this.transformation, this.width, this.height)
+        this.updateSize()
+        //Mat3.setScale(this.transformation, this.width, this.height)
     }
-    get posX() {
-        return this.transformation[this.transformation.length - Math.sqrt(this.transformation.length)];
+    getPosition(targetVector = new Float32Array(2)){
+        return Mat3.getPosition(this.transformation,targetVector)
     }
-    set posX(value = 0.0) {
-        if (value !== this.transformation[this.transformation.length - Math.sqrt(this.transformation.length)]) {
-            this.transformation[this.transformation.length - Math.sqrt(this.transformation.length)] = value;
-            this.renderChange()
-        }
-    }
-    get posY() {
-        return this.transformation[this.transformation.length - Math.sqrt(this.transformation.length) + 1];
-    }
-    set posY(value = 0.0) {
-        //0,1,2
-        //3,4,5
-        //6,7,8
-
-        //0,1,2,3,
-        //4,5,6,7,
-        //8,9,10,11,
-        //12,13,14,15
-
-        //9 sqrt = 3
-        //16 sqrt = 4
-        //mat3 y = 7
-        //mat4 y = 13
-        //3+2 =5
-        //4+3 =7
-        //3+3+1 =7
-        //4+4+1=9
-        //9-3 +1= 7
-        //16-4+1 =13
-
-        //3*2=6
-        //
-
-        //const sqrtLength = Math.sqrt(this.transformation.length);
-        if (value !== this.transformation[this.transformation.length - Math.sqrt(this.transformation.length) + 1]) {
-            this.transformation[this.transformation.length - Math.sqrt(this.transformation.length) + 1] = value;
-            this.renderChange()
-        }
+    setPosition(x=0.0,y=0.0){
+        Mat3.setPosition(this.transformation,x,y)
+        this.renderChange()
     }
 
-    get sizeX() {
-        return Math.hypot(this.transformation[0], this.transformation[3])
-    }
-    get sizeY() {
-        return Math.hypot(this.transformation[1], this.transformation[4])
-    }
-    get rightX() {
-        const size = this.sizeX;
-        if (size > 0) {
-            return this.transformation[0] / size
-        }
-        return this.transformation[0]
-    }
-    get rightY() {
-        const size = this.sizeX;
-        if (size > 0) {
-            return this.transformation[Math.sqrt(this.transformation.length)] / size
-        }
-        return this.transformation[Math.sqrt(this.transformation.length)]
-    }
-    get upX() {
-        const size = this.sizeY;
-        if (size > 0) {
-            return this.transformation[1] / size
-        }
-        return this.transformation[1]
-    }
-    get upY() {
-        const size = this.sizeY;
-        if (size > 0) {
-            return this.transformation[Math.sqrt(this.transformation.length) + 1] / size
-        }
-        return this.transformation[Math.sqrt(this.transformation.length) + 1]
-    }
-    //NOTE: may be able to use only one index. normalize it for the rot (x scale is the x rot and x rot is the x rot normalized)
-    //this means less caculations, but require everything to be rewriten
-    set sizeX(value = 1.0) {
-        if (value === 0.0) { value = 1e-6 }
-        this.transformation[0] = this.rightX * value;
-        this.transformation[Math.sqrt(this.transformation.length)] = this.rightY * value;
-    }
-    set sizeY(value = 1.0) {
-        if (value === 0.0) { value = 1e-6 }
-        this.transformation[1] = this.upX * value;
-        this.transformation[Math.sqrt(this.transformation.length) + 1] = this.upY * value;
-    }
     //may need diffrent sorting anchors or rendering anchors. the issue is the height needs to be offset 
     get yRenderOrder() { return this.posY + this.yRenderOffset }
     get xRenderOrder() { return this.posX + this.xRenderOffset }
@@ -233,8 +156,10 @@ export class RenderObject2d extends RenderObject {
         aabb[3] = this.width / 2.0;
         aabb[4] = this.height / 2.0;
         aabb[5] = 0.0
-        aabb[0] = this.posX + aabb[3];
-        aabb[1] = this.posY + aabb[4];
+        aabb[0] = Mat3.getPositionX(this.transformation) + aabb[3];
+        aabb[1] = Mat3.getPositionY(this.transformation) + aabb[4];
+        //aabb[0] = this.posX + aabb[3];
+        //aabb[1] = this.posY + aabb[4];
         aabb[2] = 0.0;
         return aabb;
     }
@@ -251,93 +176,37 @@ export class RenderObject3d extends RenderObject2d {
     depth = 1.0;
     #scaleZ = 1.0;
     get scaleZ() { return this._scale[2] }//this.#scaleZ }
+    updateSize(){
+        Mat4.setScale(this.transformation, this.width, this.height, this.depth * this._scale[2])
+    }
     setScale(x = 1.0, y = 1.0, z = 1.0) {
         //super.setScale(x, y)
         this._scale[0] = x;
         this._scale[1] = y;
         this._scale[2] = z;
         //this.#scaleZ = z;
-        Mat4.setScale(this.transformation, this.width, this.height, this.depth * this._scale[2])
+        this.updateSize()
+        //Mat4.setScale(this.transformation, this.width, this.height, this.depth * this._scale[2])
         //this.sizeZ = this.depth * this.#scaleZ;
     }
-    get posZ() {
-        return this.transformation[this.transformation.length - Math.sqrt(this.transformation.length) + 2];
+    getPosition(targetVector = new Float32Array(3)){
+        return Mat4.getPosition(this.transformation,targetVector)
     }
-    set posZ(value = 0.0) {
-        if (value !== this.transformation[this.transformation.length - Math.sqrt(this.transformation.length) + 2]) {
-            this.renderChange()
-        }
+    setPosition(x=0.0,y=0.0,z=0.0){
+        Mat4.setPosition(this.transformation,x,y,z)
+        this.renderChange()
     }
-    //overriding size x and y due to it needing more steps. it be easier to overrided,
-    // but should make the other steps easier
-    get sizeX() {
-        return Math.hypot(this.transformation[0], this.transformation[4], this.transformation[8])
-    }
-    get sizeY() {
-        return Math.hypot(this.transformation[1], this.transformation[5], this.transformation[9])
-    }
-    get sizeZ() {
-        return Math.hypot(this.transformation[2], this.transformation[6], this.transformation[10])
-    }
-    get rightZ() {
-        const size = this.sizeZ;
-        if (size > 0) {
-            return this.transformation[Math.sqrt(this.transformation.length) * 2] / size
-        }
-        return this.transformation[Math.sqrt(this.transformation.length) * 2]
-    }
-    get upZ() {
-        const size = this.sizeZ;
-        if (size > 0) {
-            return this.transformation[Math.sqrt(this.transformation.length) * 2 + 1] / size
-        }
-        return this.transformation[Math.sqrt(this.transformation.length) * 2 + 1]
-    }
-    get forwardX() {
-        const size = this.sizeX;
-        if (size > 0) {
-            return this.transformation[2] / size
-        }
-        return this.transformation[2]
-    }
-    get forwardY() {
-        const size = this.sizeY;
-        if (size > 0) {
-            return this.transformation[Math.sqrt(this.transformation.length) * 2] / size
-        }
-        return this.transformation[Math.sqrt(this.transformation.length) * 2]
-    }
-    get forwardZ() {
-        const size = this.sizeZ;
-        if (size > 0) {
-            return this.transformation[Math.sqrt(this.transformation.length) * 2 + 2] / size
-        }
-        return this.transformation[Math.sqrt(this.transformation.length) * 2 + 2]
-    }
-    set sizeX(value = 1.0) {
-        if (value === 0.0) { value = 1e-6 }
-        this.transformation[0] = this.rightX * value;
-        this.transformation[Math.sqrt(this.transformation.length)] = this.rightY * value;
-        this.transformation[Math.sqrt(this.transformation.length) * 2] = this.rightZ * value;
-    }
-    set sizeY(value = 1.0) {
-        if (value === 0.0) { value = 1e-6 }
-        this.transformation[1] = this.upX * value;
-        this.transformation[Math.sqrt(this.transformation.length) + 1] = this.upY * value;
-        this.transformation[Math.sqrt(this.transformation.length) * 2 + 1] = this.upZ * value;
-    }
-    set sizeZ(value = 1.0) {
-        if (value === 0.0) { value = 1e-6 }
-        this.transformation[2] = this.forwardX * value;
-        this.transformation[Math.sqrt(this.transformation.length) + 2] = this.forwardY * value;
-        this.transformation[Math.sqrt(this.transformation.length) * 2 + 2] = this.forwardZ * value;
-    }
+    
     get zRenderOrder() { return this.posZ + this.zRenderOffset }
 
     getAABB(aabb = new Float32Array(6)) {
-        super.getAABB(aabb)
+        //super.getAABB(aabb)
+        aabb[3] = this.width / 2.0;
+        aabb[4] = this.height / 2.0;
         aabb[5] = this.depth / 2.0;
-        aabb[2] = this.posZ + aabb[5];
+        aabb[0] = Mat4.getPositionX(this.transformation) + aabb[3];
+        aabb[1] = Mat4.getPositionY(this.transformation) + aabb[4];
+        aabb[2] = Mat4.getPositionZ(this.transformation) + aabb[5];
         return aabb;
     }
 
@@ -347,7 +216,7 @@ export class RenderObject3d extends RenderObject2d {
     }
 }
 
-export class ImageRenderObject extends RenderObject3d {
+export class ImageRenderObject extends RenderObject2d {
     #image
     imageLoaded() {
         if (!this.baseWidth) {
@@ -356,9 +225,7 @@ export class ImageRenderObject extends RenderObject3d {
         if (!this.baseHeight) {
             this.baseHeight = this.image.naturalHeight || this.image.videoHeight || this.image.height || 0;
         }
-        this.sizeX = this.baseWidth * this._scale[0];
-        this.sizeY = this.baseHeight * this._scale[1];
-        console.log('image loaded', this)
+        this.updateSize()
         if (this.onImageLoaded) {
             this.onImageLoaded();
         }

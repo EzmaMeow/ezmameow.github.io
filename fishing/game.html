@@ -151,9 +151,11 @@
         //note: window.ResizeObserver may be useful too
         window.addEventListener('resize', resize_canvas);
 
+        const playerPosition = new Float32Array(3);
         document.addEventListener('keydown', function (event) {
             let changed = false
             // event.key will be one of: "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"
+            test_object.getPosition(playerPosition);
             switch (event.key) {
                 case 'ArrowUp':
                     //test_object.posY += 8
@@ -173,25 +175,33 @@
                     changed = true
                     break;
                 case 'w':
-                    test_object.posY -= 8
+                    playerPosition[1] -= 8
+                    //test_object.posY -= 8
                     changed = true
                     break;
                 case 's':
-                    test_object.posY += 8
+                    playerPosition[1] += 8
+                    //test_object.posY += 8
                     changed = true
                     break;
                 case 'a':
-                    test_object.posX -= 8
+                    playerPosition[0] -= 8
+                    //test_object.posX -= 8
                     changed = true
                     break;
                 case 'd':
-                    test_object.posX += 8
+                    playerPosition[0] += 8
+                    //test_object.posX += 8
                     changed = true
                     break;
                 default:
                     // Ignore other keys
                     return;
             }
+            //TODO: an actual object would have a move function or similar that handles the add position logic than just setting it.
+            //could add it to the render object, but they are ment to be fix and moved by their owner
+            //also this logic should be done at the end of frame or begining, but currently not using a render loop
+            test_object.setPosition(playerPosition[0],playerPosition[1],playerPosition[2])
             if (changed) {
                 //console.log(test_camera)
                 renderer.render(scene_canvas)
