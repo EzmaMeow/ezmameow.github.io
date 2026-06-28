@@ -1,24 +1,5 @@
 
-import { Mat3, Mat4 } from "/lib/square_matrix_math.js"
-
-export function identityMat3(target = new Float32Array(9)) {
-    target.set([
-        1, 0, 0,
-        0, 1, 0,
-        0, 0, 1,
-    ]);
-    return target;
-}
-
-export function identityMat4(target = new Float32Array(16)) {
-    target.set([
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 0,
-        0, 0, 0, 1
-    ]);
-    return target;
-}
+import { Mat4 } from "/lib/square_matrix_math.js"
 
 //NOTE: may hold the render object and its render packet since this manages it
 //NOTE: may not use the packet and just create an object/array of the data or use the object directly
@@ -26,10 +7,17 @@ export function identityMat4(target = new Float32Array(16)) {
 export class RenderObject {
     #CAPABILITY_FLAGS = { CLICKABLE: 1 << 0 }
     get CAPABILITY_FLAGS() { return this.#CAPABILITY_FLAGS; }
+    #capabilityFlags = 0
     _onRenderChanged = undefined; //callback to the object manager. //called when sortkey change or anything that the object manager need to listen to
     _onCapabilityChanged = undefined;
     _sortKey = 0;
-    #capabilityFlags = 0
+    transformation = Mat4.identity();
+    _scale = new Float32Array([1.0, 1.0, 1.0]);
+    depth = 1.0;
+    baseHeight = 1;
+    get height() { return this.baseHeight * this._scale[1] }
+    baseWidth = 1;
+    get width() { return this.baseWidth * this._scale[0]; }
     get capabilityFlags() { return this.#capabilityFlags }
     set capabilityFlags(value) {
         if (value != this.#capabilityFlags) {
@@ -38,7 +26,6 @@ export class RenderObject {
                 this._onCapabilityChanged(this)
             }
         }
-
     }
     #sortRecord = new Float32Array(4); //x,y,z,layer
     get sortRecord() {
@@ -75,6 +62,7 @@ export class RenderObject {
             this.renderChange()
         }
     }
+
     #yRenderOffset = 0.0
     get yRenderOffset() { return this.#yRenderOffset }
     set yRenderOffset(value) {
@@ -83,6 +71,7 @@ export class RenderObject {
             this.renderChange()
         }
     }
+
     #xRenderOffset = 0.0
     get xRenderOffset() { return this.#xRenderOffset }
     set xRenderOffset(value) {
@@ -91,10 +80,30 @@ export class RenderObject {
             this.renderChange()
         }
     }
-    get zRenderOrder() { return this.zRenderOffset }
-    get yRenderOrder() { return this.yRenderOffset }
-    get xRenderOrder() { return this.xRenderOffset }
+
+    get yRenderOrder() { return this.posY + this.yRenderOffset }
+    get xRenderOrder() { return this.posX + this.xRenderOffset }
+    get zRenderOrder() { return this.posZ + this.zRenderOffset }
+
     visible = true;
+
+    updateSize() {
+        Mat4.setScale(this.transformation, this._scale[0], this._scale[1], this._scale[2])
+    }
+    setScale(x = 1.0, y = 1.0, z = 1.0) {
+        this._scale[0] = x;
+        this._scale[1] = y;
+        this._scale[2] = z;
+        this.updateSize()
+    }
+    getPosition(targetVector = new Float32Array(3)) {
+        return Mat4.getPosition(this.transformation, targetVector)
+    }
+    setPosition(x = 0.0, y = 0.0, z = 0.0) {
+        Mat4.setPosition(this.transformation, x, y, z)
+        this.renderChange()
+    }
+
     getSortRecord() {
         if (this._dirty) {
             this.#sortRecord[0] = this.xRenderOrder;
@@ -105,118 +114,27 @@ export class RenderObject {
         }
         return this.#sortRecord
     }
-    //may not catch it. the caller could reuse it own and have this update it
-    //also this will be min and max position not projected
-    //will use a 3d aabb with center and half since render will treat things in 3d
-    //and this is not going to be catched here
-    getAABB(aabb = new Float32Array(6)) {
+
+    getAABB(aabb = new Float32Array(6), mvMatrix = this.transformation) {
+        aabb[3] = this.baseWidth * Mat4.getXScale(mvMatrix) / 2.0;
+        aabb[4] = this.baseHeight * Mat4.getYScale(mvMatrix) / 2.0;
+        aabb[5] = this.depth * Mat4.getZScale(mvMatrix) / 2.0;
+        aabb[0] = Mat4.getPositionX(mvMatrix) + aabb[3];
+        aabb[1] = Mat4.getPositionY(mvMatrix) + aabb[4];
+        aabb[2] = Mat4.getPositionZ(mvMatrix) + aabb[5];
         return aabb;
     }
-
     deconstructor() {
         _onRenderChanged = null;
     }
-    constructor() {
-
-    }
-
-}
-//will keep render object as a base since these will share properties
-//might extend each other though
-//NOTE: MAY NEED TO USE ESP (TINY VALUE) WHEN EVER 0 IS PASSES for the size
-export class RenderObject2d extends RenderObject {
-    transformation = Mat3.identity();
-    _scale = new Float32Array([1.0, 1.0]);
-    baseHeight = 1;
-    get height() { return this.baseHeight * this._scale[1] }
-    baseWidth = 1;
-    get width() { return this.baseWidth * this._scale[0]; }
-    updateSize(){
-        Mat3.setScale(this.transformation, this.width, this.height)
-    }
-    setScale(x = 1.0, y = 1.0) {
-        this._scale[0] = x;
-        this._scale[1] = y;
-        this.updateSize()
-        //Mat3.setScale(this.transformation, this.width, this.height)
-    }
-    getPosition(targetVector = new Float32Array(2)){
-        return Mat3.getPosition(this.transformation,targetVector)
-    }
-    setPosition(x=0.0,y=0.0){
-        Mat3.setPosition(this.transformation,x,y)
-        this.renderChange()
-    }
-
-    //may need diffrent sorting anchors or rendering anchors. the issue is the height needs to be offset 
-    get yRenderOrder() { return this.posY + this.yRenderOffset }
-    get xRenderOrder() { return this.posX + this.xRenderOffset }
-
-    getAABB(aabb = new Float32Array(6)) {
-        aabb[3] = this.width / 2.0;
-        aabb[4] = this.height / 2.0;
-        aabb[5] = 0.0
-        aabb[0] = Mat3.getPositionX(this.transformation) + aabb[3];
-        aabb[1] = Mat3.getPositionY(this.transformation) + aabb[4];
-        //aabb[0] = this.posX + aabb[3];
-        //aabb[1] = this.posY + aabb[4];
-        aabb[2] = 0.0;
-        return aabb;
-    }
-
-    constructor(width = 0, height = 0) {
-        super();
+    constructor(width = 1, height = 1, depth = 1) {
         this.baseWidth = width;
         this.baseHeight = height;
-    }
-}
-export class RenderObject3d extends RenderObject2d {
-    transformation = Mat4.identity();
-    _scale = new Float32Array([1.0, 1.0, 1.0]);
-    depth = 1.0;
-    #scaleZ = 1.0;
-    get scaleZ() { return this._scale[2] }//this.#scaleZ }
-    updateSize(){
-        Mat4.setScale(this.transformation, this.width, this.height, this.depth * this._scale[2])
-    }
-    setScale(x = 1.0, y = 1.0, z = 1.0) {
-        //super.setScale(x, y)
-        this._scale[0] = x;
-        this._scale[1] = y;
-        this._scale[2] = z;
-        //this.#scaleZ = z;
-        this.updateSize()
-        //Mat4.setScale(this.transformation, this.width, this.height, this.depth * this._scale[2])
-        //this.sizeZ = this.depth * this.#scaleZ;
-    }
-    getPosition(targetVector = new Float32Array(3)){
-        return Mat4.getPosition(this.transformation,targetVector)
-    }
-    setPosition(x=0.0,y=0.0,z=0.0){
-        Mat4.setPosition(this.transformation,x,y,z)
-        this.renderChange()
-    }
-    
-    get zRenderOrder() { return this.posZ + this.zRenderOffset }
-
-    getAABB(aabb = new Float32Array(6)) {
-        //super.getAABB(aabb)
-        aabb[3] = this.width / 2.0;
-        aabb[4] = this.height / 2.0;
-        aabb[5] = this.depth / 2.0;
-        aabb[0] = Mat4.getPositionX(this.transformation) + aabb[3];
-        aabb[1] = Mat4.getPositionY(this.transformation) + aabb[4];
-        aabb[2] = Mat4.getPositionZ(this.transformation) + aabb[5];
-        return aabb;
-    }
-
-    constructor(width = 0, height = 0, depth = 0) {
-        super(width, height);
         this.depth = depth;
     }
 }
 
-export class ImageRenderObject extends RenderObject2d {
+export class ImageRenderObject extends RenderObject {
     #image
     imageLoaded() {
         if (!this.baseWidth) {
@@ -246,9 +164,8 @@ export class ImageRenderObject extends RenderObject2d {
     }
     imageCoordX = 0.0
     imageCoordY = 0.0
-    draw(canvasContext, x, y, width, height) {
-        console.log('drawing:', width, height)
-        canvasContext.drawImage(this.image, this.imageCoordX, this.imageCoordY, this.image.width, this.image.height, x, y, width, height)
+    draw(canvasContext) {
+        canvasContext.drawImage(this.image, this.imageCoordX, this.imageCoordY, this.image.width, this.image.height, 0, 0, this.baseWidth, this.baseHeight);
     }
     deconstructor() {
         super.deconstructor();
@@ -257,8 +174,9 @@ export class ImageRenderObject extends RenderObject2d {
         }
         this.#image = null;
     }
-    constructor(image, width = 0, height = 0) {
-        super(width, height);
+    //should allow more parameters or options, but the size seem to be the nessary defaults. the starting transformation could be set later
+    constructor(image, width = 0, height = 0, depth = 1) {
+        super(width, height, depth);
         this.image = image;
 
     }
@@ -274,97 +192,89 @@ export class ImageRenderObject extends RenderObject2d {
 // [ 2   5  8 ]
 
 
-//mat4
-//0,    1,  2,  3
-//4,    5,  6,  7
-//8,    9,  10, 11
-//12,   13, 14, 15
-//this.transformation[0]=1
-//this.transformation[5]=1
-//this.transformation[10]=1
-//this.transformation[15]=1
 
-//mat3
-//0,    1,  2
-//3,    4,  5
-//6,    7,  8
-//this.transformation[0]=1
-//this.transformation[4]=1
-//this.transformation[8]=1
 export class Camera {
-
+    transformation = Mat4.identity();
+    getPosition(targetVector = new Float32Array(3)) {
+        return Mat4.getPosition(this.transformation, targetVector)
+    }
+    setPosition(x = 0.0, y = 0.0, z = 0.0) {
+        Mat4.setPosition(this.transformation, x, y, z)
+    }
     //camera default dose not have x,y, or z
     //but view matrix may be a part of it instead of a passed matrix
     getViewMatrix(targetMatrix = new Float32Array(16)) {
-        identityMat4(targetMatrix) //reset the maxtrix if the passed one is not clean
+        Mat4.identity(targetMatrix) //reset the maxtrix if the passed one is not clean
         // targetMatrix[0] = 1.0;
         // targetMatrix[5] = 1.0;
         // targetMatrix[10] = 1.0;
         //  targetMatrix[15] = 1.0;
         return targetMatrix;
     }
-    screenToWorld(vector = new Float32Array(3)) {
-        return vector;
-    }
-    worldToScreen(vector = new Float32Array(3)) {
-        return vector;
-    }
+    //screenToWorld(vector = new Float32Array(3)) {
+    //    return vector;
+    //}
+    //worldToScreen(vector = new Float32Array(3)) {
+    //    return vector;
+    //}
 }
 
 //test example of a perspective camera
-export class PerspectiveCamera extends Camera {
+//export class PerspectiveCamera extends Camera {
     //NOTE: This may not be fully correct, but this was a test
-    fov = 90;
-    aspect = 1;
-    near = 1e-6;
-    far = 100;
-    x = 0.0
-    y = 0.0
-    z = 0.0
-    getViewMatrix(targetMatrix = new Float32Array(16)) {
-        const f = 1.0 / Math.tan(this.fov / 2);
-        const nf = 1 / (this.near - this.far);
-        identityMat4(targetMatrix)
-        targetMatrix[0] = f / this.aspect;
+//    fov = 90;
+//    aspect = 1;
+//    near = 1e-6;
+//    far = 100;
+//    x = 0.0
+//    y = 0.0
+//    z = 0.0
+//    getViewMatrix(targetMatrix = new Float32Array(16)) {
+//        const f = 1.0 / Math.tan(this.fov / 2);
+//        const nf = 1 / (this.near - this.far);
+//        Mat4.identity(targetMatrix)
+//        targetMatrix[0] = f / this.aspect;
         //targetMatrix[3] = -this.x;
-        targetMatrix[12] = -this.x;
-        targetMatrix[5] = f;
+//        targetMatrix[12] = -this.x;
+//        targetMatrix[5] = f;
         //targetMatrix[7] = -this.y;
-        targetMatrix[13] = -this.y;
-        targetMatrix[10] = (this.far + this.near) * nf;
+//        targetMatrix[13] = -this.y;
+//        targetMatrix[10] = (this.far + this.near) * nf;
         //targetMatrix[11] = -this.z;
-        targetMatrix[14] = -this.z;
+//        targetMatrix[14] = -this.z;
         //targetMatrix[14] = (2 * this.far * this.near) * nf;
-        targetMatrix[11] = (2 * this.far * this.near) * nf;
-        targetMatrix[15] = 0.0;
-        return targetMatrix;
-    }
-    //screenToWorld(vector = new Float32Array(3)){
-    //    return vector;
+//        targetMatrix[11] = (2 * this.far * this.near) * nf;
+//        targetMatrix[15] = 0.0;
+//        return targetMatrix;
+//    }
+
+    //constructor() {
+    //    super();
     //}
-    //worldToScreen(vector = new Float32Array(3)){
-    //    return vector;
-    //}
-    //NOTE: camera should provide conversions since the camera can warp the view
-    //this is for things like ray checks needed for mouse clicks to project from the world
-    //also may need the camera to have an actual transformation and change the view matrix to a projection matrix
-    //but need to figure out which has the actual size. transformation mostly for the rotation info and projection is for the view
-    constructor() {
-        super();
-    }
-}
+//}
 export class OrthogonalCamera extends Camera {
-    widthRatio = 90;
-    heightRatio = 90;
+    widthRatio = 1.0;
+    heightRatio = 1.0;
     near = 1e-6;
     far = 100;
     x = 0.0
     y = 0.0
     z = 0.0
+    setViewRatio(width=1.0,height=1.0,near=this.near,far=this.far){
+        this.widthRatio = width
+        this.heightRatio = height
+        this.near = near
+        this.far = far
+        this.updateSize()
+    }
+    updateSize() {
+        Mat4.setScale(this.transformation, this.widthRatio, this.heightRatio, (this.far + this.near) / (this.far + this.near))
+    }
+    //no longer going to be used, transformation will have all the infomation
     getViewMatrix(targetMatrix = new Float32Array(16)) {
         const f = 1.0 / Math.tan(this.fov / 2);
         const nf = 1 / (this.near - this.far);
-        identityMat4(targetMatrix)
+        Mat4.identity(targetMatrix)
         targetMatrix[0] = this.widthRatio;
         //targetMatrix[3] = -this.x;
         targetMatrix[12] = -this.x;
@@ -378,28 +288,30 @@ export class OrthogonalCamera extends Camera {
         return targetMatrix;
     }
 
-    screenToWorld(vector = new Float32Array(3)) {
-        vector[0] += this.x;
-        vector[1] += this.y;
-        vector[2] += this.z;
-        return vector;
-    }
-    worldToScreen(vector = new Float32Array(3)) {
-        vector[0] -= this.x;
-        vector[1] -= this.y;
-        vector[2] -= this.z;
-        return vector;
-    }
+    //screenToWorld(vector = new Float32Array(3)) {
+    //    vector[0] += this.x;
+    //    vector[1] += this.y;
+    //    vector[2] += this.z;
+    //    return vector;
+    //}
+    //worldToScreen(vector = new Float32Array(3)) {
+    //    vector[0] -= this.x;
+    //    vector[1] -= this.y;
+    //    vector[2] -= this.z;
+    //    return vector;
+    //}
 
-    constructor(widthRatio = 0, heightRatio = 0, x = 0, y = 0, z = 0, near = 1e-6, far = 100) {
+    constructor(widthRatio = 1.0, heightRatio = 1.0, x = 0, y = 0, z = 0, near = 1e-6, far = 100) {
         super();
         this.widthRatio = widthRatio;
         this.heightRatio = heightRatio;
         this.x = x;
         this.y = y;
         this.z = z;
+        this.setPosition(x,y,z)
         this.near = near;
         this.far = far;
+        this.updateSize();
 
     }
 }
@@ -542,14 +454,19 @@ export class RenderObjectManager {
         const aabb = new Float32Array(6)
         const position = new Float32Array(3);
         const objects = []
+        //const viewMatrix = camera ? camera.getViewMatrix(Mat4.identity()) : Mat4.identity();
+        const viewMatrix = camera ? camera.transformation : Mat4.identity();
+        const mvMatrix = Mat4.identity();
         for (const object of this.#clickableObjects) {
             position[0] = mouseX, position[1] = mouseY;
-            if (camera) {
-                camera.screenToWorld(position)
-            }
+            //if (camera) {
+            //    camera.screenToWorld(position)
+            //}
             //if (object.onClick) {
             //could try with the object transformation, but aabb is used more often so may keep it?
-            object.getAABB(aabb)
+            Mat4.identity(mvMatrix)
+            Mat4.multiply(object.transformation, viewMatrix, mvMatrix)
+            object.getAABB(aabb, mvMatrix)
             //need to project it with the view matrix still
             if (
                 Math.abs(position[0] - aabb[0]) <= aabb[3] &&

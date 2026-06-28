@@ -88,7 +88,7 @@
     <script type="module" src="/radio_player.js"></script>
     <script type="module">
         import { Renderer } from "./renderer.js"
-        import { RenderObject2d, RenderObjectManager, RenderObject, ImageRenderObject, PerspectiveCamera, OrthogonalCamera } from "./render_object_manager.js"
+        import { RenderObjectManager, RenderObject, ImageRenderObject, OrthogonalCamera } from "./render_object_manager.js"
 
         const scene_container = document.getElementById('world')
         const scene_canvas = document.createElement("canvas");
@@ -98,13 +98,12 @@
         const test_background_image = new Image();
         test_background_image.src = "/assets/background.jpg";
         //const test_camera = new PerspectiveCamera()
-        const test_camera = new OrthogonalCamera(1,1)
-        const test_object = new ImageRenderObject(test_image, 64, 64);
+        const test_camera = new OrthogonalCamera(1.25,1.25)
+        const test_object = new ImageRenderObject(test_image, 32, 32);
         const test_background = new ImageRenderObject(test_background_image, 320, 320);
         test_background.layer = -1;
 
-        test_object.setScale(2,2)
-        //const test_object = new RenderObject2d(RenderObject.drawImageData(test_image));
+        test_object.setScale(1.0,1.0)
         const render_object_manager = new RenderObjectManager();
         const renderer = new Renderer();
         renderer.renderObjectManager = render_object_manager;
@@ -152,6 +151,7 @@
         window.addEventListener('resize', resize_canvas);
 
         const playerPosition = new Float32Array(3);
+        const cameraPosition = new Float32Array(3);
         document.addEventListener('keydown', function (event) {
             let changed = false
             // event.key will be one of: "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"
@@ -159,19 +159,23 @@
             switch (event.key) {
                 case 'ArrowUp':
                     //test_object.posY += 8
-                    test_camera.y -= 8
+                    //test_camera.y -= 8
+                    cameraPosition[1] +=8
                     changed = true
                     break;
                 case 'ArrowDown':
-                    test_camera.y += 8
+                    //test_camera.y += 8
+                    cameraPosition[1] -=8
                     changed = true
                     break;
                 case 'ArrowLeft':
-                    test_camera.x -= 8
+                    //test_camera.x -= 8
+                    cameraPosition[0] +=8
                     changed = true
                     break;
                 case 'ArrowRight':
-                    test_camera.x += 8
+                    //test_camera.x += 8
+                    cameraPosition[0] -=8
                     changed = true
                     break;
                 case 'w':
@@ -202,6 +206,7 @@
             //could add it to the render object, but they are ment to be fix and moved by their owner
             //also this logic should be done at the end of frame or begining, but currently not using a render loop
             test_object.setPosition(playerPosition[0],playerPosition[1],playerPosition[2])
+            test_camera.setPosition(cameraPosition[0],cameraPosition[1],cameraPosition[2])
             if (changed) {
                 //console.log(test_camera)
                 renderer.render(scene_canvas)

@@ -1,4 +1,6 @@
 
+import { Mat3, Mat4 } from "/lib/square_matrix_math.js"
+
 export class Renderer {
 
     target = undefined;
@@ -79,28 +81,32 @@ export class Renderer {
             target[15] = 1;
         }
         else {
-            target[0] = v[0] * m[0] + v[1] * m[4] + v[2] * m[8];
-            target[1] = v[0] * m[1] + v[1] * m[5] + v[2] * m[9];
-            target[2] = v[0] * m[2] + v[1] * m[6] + v[2] * m[10];
+            //look like multiply and add will work unless multiply math is wrong
+            Mat4.multiply(m, v, target)
+            //Mat4.add(m,v,target)
+            return target
+            //target[0] = v[0] * m[0] + v[1] * m[4] + v[2] * m[8];
+            //target[1] = v[0] * m[1] + v[1] * m[5] + v[2] * m[9];
+            //target[2] = v[0] * m[2] + v[1] * m[6] + v[2] * m[10];
 
-            target[12] = v[12] + m[12];
+            //target[12] = v[12] + m[12];
 
-            target[4] = v[4] * m[0] + v[5] * m[4] + v[6] * m[8];
-            target[5] = v[4] * m[1] + v[5] * m[5] + v[6] * m[9];
-            target[6] = v[4] * m[2] + v[5] * m[6] + v[6] * m[10];
+            //target[4] = v[4] * m[0] + v[5] * m[4] + v[6] * m[8];
+            //target[5] = v[4] * m[1] + v[5] * m[5] + v[6] * m[9];
+            //target[6] = v[4] * m[2] + v[5] * m[6] + v[6] * m[10];
 
-            target[13] = v[13] + m[13];
+            //target[13] = v[13] + m[13];
 
-            target[8] = v[8] * m[0] + v[9] * m[4] + v[10] * m[8];
-            target[9] = v[8] * m[1] + v[9] * m[5] + v[10] * m[9];
-            target[10] = v[8] * m[2] + v[9] * m[6] + v[10] * m[10];
+            //target[8] = v[8] * m[0] + v[9] * m[4] + v[10] * m[8];
+            //target[9] = v[8] * m[1] + v[9] * m[5] + v[10] * m[9];
+            //target[10] = v[8] * m[2] + v[9] * m[6] + v[10] * m[10];
 
-            target[14] = v[14] + m[14];
+            //target[14] = v[14] + m[14];
 
-            target[3] = 0;
-            target[7] = 0;
-            target[11] = 0;
-            target[15] = 1;
+            //target[3] = 0;
+            //target[7] = 0;
+            //target[11] = 0;
+            //target[15] = 1;
         }
         return target
     }
@@ -129,15 +135,33 @@ export class Renderer {
             viewMatrix[10] = 1
             viewMatrix[15] = 1
         }
-
+        //clear for a redraw since this is just a repaint render (for now)
+        context.clearRect(0, 0, target.width, target.height);
         //may need to clamp view matrix with viewport
         //if (viewport){ }
         if (objectManager) {
             const renderList = objectManager.getRenderList(viewMatrix, true)
             for (const object of renderList) {
-                this.calcMvMatrix(object.transformation, viewMatrix, mvMatrix) //NOTE: may need to catch this in the object. probably could caculate it when fetching the list(object manager)
+                //Mat4.multiply(object.transformation,viewMatrix,mvMatrix)
+                //this.calcMvMatrix(object.transformation, viewMatrix, mvMatrix) //NOTE: may need to catch this in the object. probably could caculate it when fetching the list(object manager)
+                this.calcMvMatrix(object.transformation, camera ? camera.transformation : viewMatrix, mvMatrix)
                 //object.draw(context, mvMatrix[3], mvMatrix[7], mvMatrix[0], mvMatrix[5])//NOTE: using target bounds for now, but should pull it from the view matrix and
-                object.draw(context, mvMatrix[12], mvMatrix[13], mvMatrix[0], mvMatrix[5])//NOTE: using target bounds for now, but should pull it from the view matrix and
+                //object.draw(context, mvMatrix[12], mvMatrix[13], mvMatrix[0], mvMatrix[5])//NOTE: using target bounds for now, but should pull it from the view matrix and
+
+                //object.draw(context, mvMatrix)
+
+                context.save();
+                //assumed it is column order, should pull the values with funtions(though current ones use an array). also could add a switch or do not bother and keep assuming
+                context.setTransform(
+                    mvMatrix[0],
+                    mvMatrix[1],
+                    mvMatrix[4],
+                    mvMatrix[5],
+                    mvMatrix[12],
+                    mvMatrix[13]
+                )
+                object.draw(context)
+                context.restore();
             }
             console.log(renderList)
         }
