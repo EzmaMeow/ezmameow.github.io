@@ -103,6 +103,25 @@
         const test_background = new ImageRenderObject(test_background_image, 320, 320);
         test_background.layer = -1;
 
+
+        const test_objectA = new ImageRenderObject(test_image, 32, 32);
+        test_objectA.setPosition(32,32,1)
+        test_objectA.onClick = function () { console.log('meowA depth 1.0') }
+        test_objectA.capabilityFlags |= test_objectA.CAPABILITY_FLAGS.CLICKABLE;
+        const test_objectB = new ImageRenderObject(test_image, 32, 32);
+        test_objectB.setPosition(32,32,2)
+        test_objectB.onClick = function () { console.log('meowB depth 2.0') }
+        test_objectB.capabilityFlags |= test_objectB.CAPABILITY_FLAGS.CLICKABLE;
+        const test_objectC = new ImageRenderObject(test_image, 32, 32);
+        test_objectC.setPosition(32,32,0.5)
+        test_objectC.onClick = function () { console.log('meowC depth 0.5') }
+        test_objectC.capabilityFlags |= test_objectC.CAPABILITY_FLAGS.CLICKABLE;
+        const test_objectD = new ImageRenderObject(test_image, 32, 32);
+        test_objectD.setPosition(32,32,1.5)
+        test_objectD.onClick = function () { console.log('meowD depth 1.5') }
+        test_objectD.capabilityFlags |= test_objectD.CAPABILITY_FLAGS.CLICKABLE;
+
+
         test_object.setScale(1.0,1.0)
         const render_object_manager = new RenderObjectManager();
         const renderer = new Renderer();
@@ -111,6 +130,11 @@
 
         render_object_manager.add(test_background);
         render_object_manager.add(test_object);
+
+        render_object_manager.add(test_objectA);
+        render_object_manager.add(test_objectB);
+        render_object_manager.add(test_objectC);
+        render_object_manager.add(test_objectD);
 
         function resize_canvas() {
             const rect = scene_container.getBoundingClientRect();
@@ -127,22 +151,14 @@
 
         scene_container.appendChild(scene_canvas);
         test_object.onImageLoaded = function () {
-            console.log('MEOW?')
-            //test_image.onload = function () {
-            //test_object.sizeX = 16//test_object.width;
-            //test_object.sizeY = 16//test_object.height;
-            //test_object.xRenderOffset = -test_object.width;
-            //test_object.yRenderOffset = -test_object.height;
             test_object.onClick = function () { console.log('meow') }
             test_object.capabilityFlags |= test_object.CAPABILITY_FLAGS.CLICKABLE;
-            renderer.render(scene_canvas)
         }
         test_background.onImageLoaded = function () {
             //NOTE: the issues is not really with how it rendering, but the check is base on the object's hight/width than what it is overlaping with
             //so offseting itself by the width/hight wont work since the diffrence is base on itself at the time of sorting
             test_background.xRenderOffset = test_background.width;
             test_background.yRenderOffset = test_background.height;
-            renderer.render(scene_canvas)
         }
 
 
@@ -161,42 +177,34 @@
                     //test_object.posY += 8
                     //test_camera.y -= 8
                     cameraPosition[1] +=8
-                    changed = true
                     break;
                 case 'ArrowDown':
                     //test_camera.y += 8
                     cameraPosition[1] -=8
-                    changed = true
                     break;
                 case 'ArrowLeft':
                     //test_camera.x -= 8
                     cameraPosition[0] +=8
-                    changed = true
                     break;
                 case 'ArrowRight':
                     //test_camera.x += 8
                     cameraPosition[0] -=8
-                    changed = true
                     break;
                 case 'w':
                     playerPosition[1] -= 8
                     //test_object.posY -= 8
-                    changed = true
                     break;
                 case 's':
                     playerPosition[1] += 8
                     //test_object.posY += 8
-                    changed = true
                     break;
                 case 'a':
                     playerPosition[0] -= 8
                     //test_object.posX -= 8
-                    changed = true
                     break;
                 case 'd':
                     playerPosition[0] += 8
                     //test_object.posX += 8
-                    changed = true
                     break;
                 default:
                     // Ignore other keys
@@ -207,10 +215,6 @@
             //also this logic should be done at the end of frame or begining, but currently not using a render loop
             test_object.setPosition(playerPosition[0],playerPosition[1],playerPosition[2])
             test_camera.setPosition(cameraPosition[0],cameraPosition[1],cameraPosition[2])
-            if (changed) {
-                //console.log(test_camera)
-                renderer.render(scene_canvas)
-            }
         })
 
         scene_canvas.addEventListener('click', function (event) {
@@ -219,8 +223,15 @@
             const x = event.clientX - rect.left;
             const y = event.clientY - rect.top;
 
-            render_object_manager.onClick(x,y,0,1,renderer.camera)
+            render_object_manager.onClick(x,y,Infinity,10,renderer.camera)
         })
+
+        function update(){
+            renderer.render(scene_canvas)
+            requestAnimationFrame(() => update());
+        }
+        update();
+        
 
     </script>
 

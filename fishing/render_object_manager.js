@@ -81,9 +81,9 @@ export class RenderObject {
         }
     }
 
-    get yRenderOrder() { return this.posY + this.yRenderOffset }
-    get xRenderOrder() { return this.posX + this.xRenderOffset }
-    get zRenderOrder() { return this.posZ + this.zRenderOffset }
+    get yRenderOrder() { return Mat4.getPositionY(this.transformation) + this.yRenderOffset }
+    get xRenderOrder() { return Mat4.getPositionX(this.transformation) + this.xRenderOffset }
+    get zRenderOrder() { return Mat4.getPositionZ(this.transformation) + this.zRenderOffset }
 
     visible = true;
 
@@ -201,57 +201,8 @@ export class Camera {
     setPosition(x = 0.0, y = 0.0, z = 0.0) {
         Mat4.setPosition(this.transformation, x, y, z)
     }
-    //camera default dose not have x,y, or z
-    //but view matrix may be a part of it instead of a passed matrix
-    getViewMatrix(targetMatrix = new Float32Array(16)) {
-        Mat4.identity(targetMatrix) //reset the maxtrix if the passed one is not clean
-        // targetMatrix[0] = 1.0;
-        // targetMatrix[5] = 1.0;
-        // targetMatrix[10] = 1.0;
-        //  targetMatrix[15] = 1.0;
-        return targetMatrix;
-    }
-    //screenToWorld(vector = new Float32Array(3)) {
-    //    return vector;
-    //}
-    //worldToScreen(vector = new Float32Array(3)) {
-    //    return vector;
-    //}
 }
 
-//test example of a perspective camera
-//export class PerspectiveCamera extends Camera {
-    //NOTE: This may not be fully correct, but this was a test
-//    fov = 90;
-//    aspect = 1;
-//    near = 1e-6;
-//    far = 100;
-//    x = 0.0
-//    y = 0.0
-//    z = 0.0
-//    getViewMatrix(targetMatrix = new Float32Array(16)) {
-//        const f = 1.0 / Math.tan(this.fov / 2);
-//        const nf = 1 / (this.near - this.far);
-//        Mat4.identity(targetMatrix)
-//        targetMatrix[0] = f / this.aspect;
-        //targetMatrix[3] = -this.x;
-//        targetMatrix[12] = -this.x;
-//        targetMatrix[5] = f;
-        //targetMatrix[7] = -this.y;
-//        targetMatrix[13] = -this.y;
-//        targetMatrix[10] = (this.far + this.near) * nf;
-        //targetMatrix[11] = -this.z;
-//        targetMatrix[14] = -this.z;
-        //targetMatrix[14] = (2 * this.far * this.near) * nf;
-//        targetMatrix[11] = (2 * this.far * this.near) * nf;
-//        targetMatrix[15] = 0.0;
-//        return targetMatrix;
-//    }
-
-    //constructor() {
-    //    super();
-    //}
-//}
 export class OrthogonalCamera extends Camera {
     widthRatio = 1.0;
     heightRatio = 1.0;
@@ -260,7 +211,7 @@ export class OrthogonalCamera extends Camera {
     x = 0.0
     y = 0.0
     z = 0.0
-    setViewRatio(width=1.0,height=1.0,near=this.near,far=this.far){
+    setViewRatio(width = 1.0, height = 1.0, near = this.near, far = this.far) {
         this.widthRatio = width
         this.heightRatio = height
         this.near = near
@@ -270,36 +221,6 @@ export class OrthogonalCamera extends Camera {
     updateSize() {
         Mat4.setScale(this.transformation, this.widthRatio, this.heightRatio, (this.far + this.near) / (this.far + this.near))
     }
-    //no longer going to be used, transformation will have all the infomation
-    getViewMatrix(targetMatrix = new Float32Array(16)) {
-        const f = 1.0 / Math.tan(this.fov / 2);
-        const nf = 1 / (this.near - this.far);
-        Mat4.identity(targetMatrix)
-        targetMatrix[0] = this.widthRatio;
-        //targetMatrix[3] = -this.x;
-        targetMatrix[12] = -this.x;
-        targetMatrix[5] = this.heightRatio;
-        //targetMatrix[7] = -this.y;
-        targetMatrix[13] = -this.y;
-        targetMatrix[10] = (this.far + this.near) / (this.far + this.near);
-        //targetMatrix[11] = -this.z;
-        targetMatrix[14] = -this.z;
-        //targetMatrix[15] = 1.0;
-        return targetMatrix;
-    }
-
-    //screenToWorld(vector = new Float32Array(3)) {
-    //    vector[0] += this.x;
-    //    vector[1] += this.y;
-    //    vector[2] += this.z;
-    //    return vector;
-    //}
-    //worldToScreen(vector = new Float32Array(3)) {
-    //    vector[0] -= this.x;
-    //    vector[1] -= this.y;
-    //    vector[2] -= this.z;
-    //    return vector;
-    //}
 
     constructor(widthRatio = 1.0, heightRatio = 1.0, x = 0, y = 0, z = 0, near = 1e-6, far = 100) {
         super();
@@ -308,36 +229,13 @@ export class OrthogonalCamera extends Camera {
         this.x = x;
         this.y = y;
         this.z = z;
-        this.setPosition(x,y,z)
+        this.setPosition(x, y, z)
         this.near = near;
         this.far = far;
         this.updateSize();
 
     }
 }
-
-//need to look up and understand this sniplet
-//proj is yje camera view matrix. need to understand what view is(sound like the camera transfrom matrix which mean the proj might need to be strip of pos else issue)
-//so may need manage both and do model, proj, view instead of model and projview. mostly if camera was to rotate, the extra matrix would be needed and project is 
-//for check against how the world is veiwed
-//NOTE: the big thing is that the mpv is not needed, just the pv which can be used to get a vector from the camera projection and check the object transformation in world space.
-//function screenToWorldRay(mouseX, mouseY, viewport, invProj, invView) {
-// Convert to NDC
-//  const x = (mouseX / viewport.width) * 2 - 1;
-//  const y = 1 - (mouseY / viewport.height) * 2;
-
-// Clip space
-//  const clip = [x, y, -1, 1];
-
-// View space
-//  const view = multiplyMat4Vec4(invProj, clip);
-//  view[2] = -1;
-//  view[3] = 0;
-
-// World space direction
-//  const worldDir = multiplyMat4Vec4(invView, view);
-//  return normalize([worldDir[0], worldDir[1], worldDir[2]]);
-//}
 
 export class RenderObjectManager {
     //NOTE: renderPacket or getRenderPacket should be in the object that return compile data for the render. maybe the varible since the render object is like a struct
@@ -361,7 +259,7 @@ export class RenderObjectManager {
     }
     //called when it toggle on/off an event like isClickable
     objectCapabilityChange(renderObject) {
-        console.log('MEOOOW', renderObject.capabilityFlags, renderObject.CAPABILITY_FLAGS.CLICKABLE, renderObject.capabilityFlags & renderObject.CAPABILITY_FLAGS.CLICKABLE)
+        //console.log('MEOOOW', renderObject.capabilityFlags, renderObject.CAPABILITY_FLAGS.CLICKABLE, renderObject.capabilityFlags & renderObject.CAPABILITY_FLAGS.CLICKABLE)
         if (renderObject.capabilityFlags & renderObject.CAPABILITY_FLAGS.CLICKABLE) {
             //if (renderObject.clickable) {
             this.#clickableObjects.add(renderObject);
@@ -379,10 +277,13 @@ export class RenderObjectManager {
         renderObject._onRenderChanged = (object) => this.objectRenderChange(object);
         renderObject._onCapabilityChanged = (object) => this.objectCapabilityChange(object);
         this.#dirty = true;
-
-        if (renderObject.isClickable) {
+        if (renderObject.capabilityFlags & renderObject.CAPABILITY_FLAGS.CLICKABLE) {
             this.#clickableObjects.add(renderObject);
+            //console.log('added ', renderObject, ' early to clicks')
         }
+        //if (renderObject.isClickable) {
+        //    this.#clickableObjects.add(renderObject);
+        //}
         //add data to render list
         return renderObject
 
@@ -441,7 +342,7 @@ export class RenderObjectManager {
                 return this.renderOrder(a, b);
             });
             this.#dirty = false
-            console.log(this.renderList)
+            //console.log(this.renderList)
         }
 
         return this.renderList
@@ -450,13 +351,14 @@ export class RenderObjectManager {
     //but could check and call it if it is expecting it
     //note: may need to get the z from the veiw. depth currently could be used as an offset.
     //also might need to use camera instead of view to project to ray
-    onClick(mouseX, mouseY, depth = 0, maxObjects = 1, camera = this.camera) {
+    onClick(mouseX, mouseY, depth = Infinity, maxObjects = 1, camera = this.camera) {
         const aabb = new Float32Array(6)
         const position = new Float32Array(3);
         const objects = []
         //const viewMatrix = camera ? camera.getViewMatrix(Mat4.identity()) : Mat4.identity();
         const viewMatrix = camera ? camera.transformation : Mat4.identity();
         const mvMatrix = Mat4.identity();
+        //console.log(this.#clickableObjects)
         for (const object of this.#clickableObjects) {
             position[0] = mouseX, position[1] = mouseY;
             //if (camera) {
@@ -471,8 +373,9 @@ export class RenderObjectManager {
             if (
                 Math.abs(position[0] - aabb[0]) <= aabb[3] &&
                 Math.abs(position[1] - aabb[1]) <= aabb[4] &&
-                //may need to look up depth. since this should be a ray cast
-                Math.abs(depth - aabb[2]) <= aabb[5]
+                //may need to look up depth. since this should be a ray cast. will treat non-finite as true
+                (!Number.isFinite(depth) || Math.abs(depth - aabb[2]) <= aabb[5])
+                
             ) {
                 //console.log('added to click array', object)
                 objects.push(object)
