@@ -23,6 +23,7 @@ export const defaultExtensionClassMap = new Map(Object.entries({
     jpg: Image,
     jpeg: Image,
     png: Image,
+    pnj: Image,
     gif: Image,
     webp: Image,
     bmp: Image,

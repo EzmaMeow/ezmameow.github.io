@@ -1,5 +1,6 @@
 
-import { Mat3, Mat4 } from "/lib/square_matrix_math.js"
+import { Mat4 } from "/lib/square_matrix_math.js"
+import { getScreenMatrix, buildRenderInfo } from "./render_lib.js"
 
 export class Renderer {
 
@@ -14,6 +15,14 @@ export class Renderer {
 
     camera = undefined
 
+    lastRenderState = {
+        modelViewMatrix: Mat4.identity(),
+        clipMatrix: Mat4.identity(),
+        screenMatrix: Mat4.identity(),
+        projectionMatrix: Mat4.identity(),
+        viewportMatrix: Mat4.identity(),
+        viewMatrix: Mat4.identity(),
+    }
     //NOTE on sorting. may need to have a manager for the objects list. update it fully when static stuff change
     //and remove and added when dynmaic stuff change (using a type that do not move entries down or do so efficently)
     //also could add signals and update if anything dirty
@@ -28,30 +37,46 @@ export class Renderer {
             console.log('no render target provided')
             return
         }
-        const viewMatrix = camera ? camera.transformation : Mat4.identity();
-        const mvMatrix = Mat4.identity();
+        buildRenderInfo(
+            camera ? camera.transformation : Mat4.identity(),
+            camera ? camera.projection : Mat4.identity(),
+            camera ? camera.viewportMatrix : Mat4.identity(),
+            this.lastRenderState
+        );
+
         const context = target.getContext("2d");
 
-        //clear for a redraw since this is just a repaint render (for now)
         context.clearRect(0, 0, target.width, target.height);
         //may need to clamp view matrix with viewport
         //if (viewport){ }
         if (objectManager) {
-            const renderList = objectManager.getRenderList(viewMatrix, rerender)
+            const renderList = objectManager.getRenderList(rerender)
             for (const object of renderList) {
-                Mat4.multiply(object.transformation, viewMatrix, mvMatrix)
+
+                getScreenMatrix(object.transformation, this.lastRenderState)
 
                 context.save();
-                //assumed it is column order, should pull the values with funtions(though current ones use an array). also could add a switch or do not bother and keep assuming
-                context.setTransform(
-                    mvMatrix[0],
-                    mvMatrix[1],
-                    mvMatrix[4],
-                    mvMatrix[5],
-                    mvMatrix[12],
-                    mvMatrix[13]
-                )
-                object.draw(context)
+                if (Mat4.isRowOrdered) {
+                    context.setTransform(
+                        this.lastRenderState.screenMatrix[0],
+                        this.lastRenderState.screenMatrix[4],
+                        this.lastRenderState.screenMatrix[1],
+                        this.lastRenderState.screenMatrix[5],
+                        this.lastRenderState.screenMatrix[3],
+                        this.lastRenderState.screenMatrix[7]
+                    );
+                }
+                else {
+                    context.setTransform(
+                        this.lastRenderState.screenMatrix[0],
+                        this.lastRenderState.screenMatrix[1],
+                        this.lastRenderState.screenMatrix[4],
+                        this.lastRenderState.screenMatrix[5],
+                        this.lastRenderState.screenMatrix[12],
+                        this.lastRenderState.screenMatrix[13]
+                    );
+                }
+                object.draw(context, this.lastRenderState)
                 context.restore();
             }
             //console.log(renderList)
@@ -59,3 +84,4 @@ export class Renderer {
 
     }
 }
+export default new Renderer();

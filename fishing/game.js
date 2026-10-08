@@ -14,7 +14,9 @@ const assets = {
 const scene_container = document.getElementById('world')
 const scene_canvas = document.createElement("canvas");
 const renderer = new Renderer();
+const camera = new OrthogonalCamera(scene_canvas, 320, 320)
 renderer.renderObjectManager = renderObjectManager;
+renderer.camera = camera;
 
 
 //invert the load to take a uid and load from a path if not provided
@@ -29,7 +31,7 @@ async function start() {
     const test_image = await load("sprite");
     const test_background_image = await load("background");
 
-    const test_camera = new OrthogonalCamera(1.25, 1.25)
+    const test_camera = camera
     const test_object = new ImageRenderObject(test_image, { width: 32, height: 32 });
     const test_background = new ImageRenderObject(test_background_image, { width: 320, height: 320 });
     test_background.layer = -1;
@@ -70,7 +72,7 @@ async function start() {
     //const render_object_manager = new RenderObjectManager();
 
     
-    renderer.camera = test_camera;
+    
 
     renderObjectManager.add(test_background);
     renderObjectManager.add(test_object);
@@ -86,6 +88,7 @@ async function start() {
         const rect = scene_container.getBoundingClientRect();
         scene_canvas.width = rect.width;
         scene_canvas.height = rect.width; //keep it square, but may need to define a min size
+        camera.updateViewport();
     }
 
     //scene_canvas.id = "myCanvas";
@@ -121,20 +124,16 @@ async function start() {
         switch (event.key) {
             case 'ArrowUp':
                 //test_object.posY += 8
-                //test_camera.y -= 8
-                cameraPosition[1] += 8
-                break;
-            case 'ArrowDown':
-                //test_camera.y += 8
                 cameraPosition[1] -= 8
                 break;
+            case 'ArrowDown':
+                cameraPosition[1] += 8
+                break;
             case 'ArrowLeft':
-                //test_camera.x -= 8
-                cameraPosition[0] += 8
+                cameraPosition[0] -= 8
                 break;
             case 'ArrowRight':
-                //test_camera.x += 8
-                cameraPosition[0] -= 8
+                cameraPosition[0] += 8
                 break;
             case 'w':
                 playerPosition[1] -= 8

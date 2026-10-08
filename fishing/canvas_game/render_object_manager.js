@@ -1,4 +1,5 @@
 import { Mat4 } from "/lib/square_matrix_math.js"
+import { getScreenMatrix, buildRenderInfo } from "./render_lib.js"
 
 // Column-major layout:
 // [ 0   4   8  12 ]
@@ -149,7 +150,7 @@ export class RenderObjectManager {
         //click should return to one on top first
         return ar[0] - br[0];
     }
-    getRenderList(viewMatrix = [], dirty = false) {
+    getRenderList(dirty = false) {
         //regen the whole list
         //note: camera might mess up render order if perspective
         if (this.#dirty || dirty) {
@@ -181,13 +182,23 @@ export class RenderObjectManager {
         return this.renderList
     }
 
+    lastRenderInfo = {
+
+    }
+
     onClick(mouseX, mouseY, depth = Infinity, maxObjects = 1, camera = this.camera) {
         const aabb = new Float32Array(6)
         const position = new Float32Array(3);
         const objects = []
-        //const viewMatrix = camera ? camera.getViewMatrix(Mat4.identity()) : Mat4.identity();
-        const viewMatrix = camera ? camera.transformation : Mat4.identity();
-        const mvMatrix = Mat4.identity();
+  
+
+        buildRenderInfo(
+            camera ? camera.transformation : Mat4.identity(),
+            camera ? camera.projection : Mat4.identity(),
+            camera ? camera.viewportMatrix : Mat4.identity(),
+            this.lastRenderInfo
+        );
+
         //console.log(this.#clickableObjects)
         for (const groupId of this.#activeGroups) {
             const group = this.getGroup(groupId)
@@ -195,16 +206,12 @@ export class RenderObjectManager {
             for (const object of group.clickables) {
                 //may disallow invisable objects...but may also allow visiblity to be a state and 0 beling collapsed, 1 for visable, and 2 for hidden
                 //the idea is this click feature is for the render object and when not visiable, it dose not exisits
-                if (!object.visible){continue}
+                if (!object.visible) { continue }
                 position[0] = mouseX, position[1] = mouseY;
-                //if (camera) {
-                //    camera.screenToWorld(position)
-                //}
-                //if (object.onClick) {
-                //could try with the object transformation, but aabb is used more often so may keep it?
-                Mat4.identity(mvMatrix)
-                Mat4.multiply(object.transformation, viewMatrix, mvMatrix)
-                object.getAABB(aabb, mvMatrix)
+
+                getScreenMatrix(object.transformation, this.lastRenderInfo)
+
+                object.getAABB(aabb, this.lastRenderInfo.screenMatrix)
                 //need to project it with the view matrix still
                 if (
                     Math.abs(position[0] - aabb[0]) <= aabb[3] &&

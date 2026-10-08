@@ -34,7 +34,7 @@ export class ImageRenderObject extends RenderObject {
         }
         this.#image.addEventListener('load', () => this.imageLoaded());
     }
-    draw(canvasContext) {
+    draw(canvasContext, renderState) {
         if (this.image.textureAtlas) {
             canvasContext.drawImage(
                 this.image,
@@ -77,11 +77,13 @@ export class ImageRenderObject extends RenderObject {
     //should allow more parameters or options, but the size seem to be the nessary defaults. the starting transformation could be set later
     constructor(image, options) {
         super(options);
-        if (options.textureX) {
-            this.textureX = options.textureX;
-        }
-        if (options.textureY) {
-            this.textureY = options.textureY;
+        if (options) {
+            if (options.textureX) {
+                this.textureX = options.textureX;
+            }
+            if (options.textureY) {
+                this.textureY = options.textureY;
+            }
         }
         this.image = image;
 
