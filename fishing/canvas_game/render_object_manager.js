@@ -162,7 +162,6 @@ export class RenderObjectManager {
                     group.renderList.length = 0
                     for (const object of group.objects) {
                         if (!object.visible) { continue }
-                        //could use the view matrix to cull this not in bounds. issue is making sure rotation is handled correctly
                         group.renderList.push(object);
                         this.renderList.push(object);
                     }
@@ -178,7 +177,6 @@ export class RenderObjectManager {
             });
             this.#dirty = false
         }
-
         return this.renderList
     }
 
@@ -190,10 +188,9 @@ export class RenderObjectManager {
         const aabb = new Float32Array(6)
         const position = new Float32Array(3);
         const objects = []
-  
 
         buildRenderInfo(
-            camera ? camera.transformation : Mat4.identity(),
+            camera ? camera.transform : Mat4.identity(),
             camera ? camera.projection : Mat4.identity(),
             camera ? camera.viewportMatrix : Mat4.identity(),
             this.lastRenderInfo
@@ -209,7 +206,7 @@ export class RenderObjectManager {
                 if (!object.visible) { continue }
                 position[0] = mouseX, position[1] = mouseY;
 
-                getScreenMatrix(object.transformation, this.lastRenderInfo)
+                getScreenMatrix(object.globalTransform, this.lastRenderInfo)
 
                 object.getAABB(aabb, this.lastRenderInfo.screenMatrix)
                 //need to project it with the view matrix still

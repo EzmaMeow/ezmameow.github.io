@@ -2,6 +2,7 @@ import { RenderObject } from "./render_object.js"
 
 export class ImageRenderObject extends RenderObject {
     #image
+    depth = 1;
     imageLoaded() {
         if (!this.baseWidth) {
             this.baseWidth = this.image.naturalWidth || this.image.videoWidth || this.image.width || 0
@@ -35,6 +36,11 @@ export class ImageRenderObject extends RenderObject {
         this.#image.addEventListener('load', () => this.imageLoaded());
     }
     draw(canvasContext, renderState) {
+        if (typeof this.opacity !== 'undefined' ){
+            canvasContext.globalAlpha = this.opacity;
+        }
+
+
         if (this.image.textureAtlas) {
             canvasContext.drawImage(
                 this.image,

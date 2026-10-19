@@ -10,12 +10,29 @@ export class RenderObject {
     _onRenderChanged = undefined; //callback to the object manager. //called when sortkey change or anything that the object manager need to listen to
     _onCapabilityChanged = undefined;
     _sortKey = 0;
-    transformation = Mat4.identity();
+    //TODO: rename to transform
+    transform = Mat4.identity();
+    parentGlobalTransform;
+    globalTransform = Mat4.identity();
+    getGlobalTransform(){
+        //will need to caculate it each getter since it easier to track the parent global transform
+        //also should not need to update this on change since this should not have children that is dependent on it
+        //will change it to a dedicated getter function so the render can call it once per render call and others
+        //can acess the matrix directly for last frame info
+        if(this.parentGlobalTransform){
+            Mat4.multiply(this.parentGlobalTransform, this.transform, this.globalTransform)
+        }
+        else{
+            this.globalTransform.set(this.transform)
+        }
+        return this.globalTransform
+    }
+    //render objects transfomation by default is global and this needs to be overriden to handle cases where render objects is reltive to some other transform
     _scale = new Float32Array([1.0, 1.0, 1.0]);
-    depth = 1.0;
-    baseHeight = 1;
+    depth = 0;
+    baseHeight = 0;
     get height() { return this.baseHeight * this._scale[1] }
-    baseWidth = 1;
+    baseWidth = 0;
     get width() { return this.baseWidth * this._scale[0]; }
     get capabilityFlags() { return this.#capabilityFlags }
     set capabilityFlags(value) {
@@ -49,7 +66,6 @@ export class RenderObject {
     renderChange() {
         this._dirty = true
         if (this._onRenderChanged) {
-            
             this._onRenderChanged(this)
         }
     }
@@ -80,15 +96,25 @@ export class RenderObject {
             this.renderChange()
         }
     }
+    //will use global if exist. it be the parent responsibly to update all its children global transforms if its transform moves
+    //and should have a way to listen to ist children when their transfrom becomes dirty
+    //if ordered correctly, parent could use their global transform to update their children allowing a chain update
+    //but all other transform modifcation should be local for render objects and the one who implements it should manage world/local of its render objects
+    get yRenderOrder() {
+        return Mat4.getPositionY(this.globalTransform) + this.yRenderOffset
+    }
+    get xRenderOrder() {
+        return Mat4.getPositionX(this.globalTransform) + this.xRenderOffset
+    }
+    get zRenderOrder() {
+        return Mat4.getPositionZ(this.globalTransform) + this.zRenderOffset
+    }
 
-    get yRenderOrder() { return Mat4.getPositionY(this.transformation) + this.yRenderOffset }
-    get xRenderOrder() { return Mat4.getPositionX(this.transformation) + this.xRenderOffset }
-    get zRenderOrder() { return Mat4.getPositionZ(this.transformation) + this.zRenderOffset }
 
     visible = true;
 
     updateSize() {
-        Mat4.setScale(this.transformation, this._scale[0], this._scale[1], this._scale[2])
+        Mat4.setScale(this.transform, this._scale[0], this._scale[1], this._scale[2])
     }
     setScale(x = 1.0, y = 1.0, z = 1.0) {
         this._scale[0] = x;
@@ -97,10 +123,10 @@ export class RenderObject {
         this.updateSize()
     }
     getPosition(targetVector = new Float32Array(3)) {
-        return Mat4.getPosition(this.transformation, targetVector)
+        return Mat4.getPosition(this.transform, targetVector)
     }
     setPosition(x = 0.0, y = 0.0, z = 0.0) {
-        Mat4.setPosition(this.transformation, x, y, z)
+        Mat4.setPosition(this.transform, x, y, z)
         this.renderChange()
     }
 
@@ -115,7 +141,7 @@ export class RenderObject {
         return this.#sortRecord
     }
 
-    getAABB(aabb = new Float32Array(6), mvMatrix = this.transformation) {
+    getAABB(aabb = new Float32Array(6), mvMatrix = this.transform) {
         aabb[3] = this.baseWidth * Mat4.getXScale(mvMatrix) / 2.0;
         aabb[4] = this.baseHeight * Mat4.getYScale(mvMatrix) / 2.0;
         aabb[5] = this.depth * Mat4.getZScale(mvMatrix) / 2.0;
@@ -127,6 +153,7 @@ export class RenderObject {
     deconstructor() {
         _onRenderChanged = null;
     }
+    //todo: add a getGlobalTransform or allow it to be check first
     constructor(options) {
         //this.baseWidth = width;
         //this.baseHeight = height;

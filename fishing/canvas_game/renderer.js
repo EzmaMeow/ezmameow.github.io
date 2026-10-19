@@ -5,8 +5,6 @@ import { getScreenMatrix, buildRenderInfo } from "./render_lib.js"
 export class Renderer {
 
     target = undefined;
-
-    //there a dedicaded class for this and this here is a placeholder
     renderObjectManager = {
         object: new Set(),
         renderList: [],
@@ -38,7 +36,7 @@ export class Renderer {
             return
         }
         buildRenderInfo(
-            camera ? camera.transformation : Mat4.identity(),
+            camera ? camera.transform : Mat4.identity(),
             camera ? camera.projection : Mat4.identity(),
             camera ? camera.viewportMatrix : Mat4.identity(),
             this.lastRenderState
@@ -47,13 +45,11 @@ export class Renderer {
         const context = target.getContext("2d");
 
         context.clearRect(0, 0, target.width, target.height);
-        //may need to clamp view matrix with viewport
-        //if (viewport){ }
         if (objectManager) {
             const renderList = objectManager.getRenderList(rerender)
             for (const object of renderList) {
 
-                getScreenMatrix(object.transformation, this.lastRenderState)
+                getScreenMatrix(object.getGlobalTransform(), this.lastRenderState)
 
                 context.save();
                 if (Mat4.isRowOrdered) {
@@ -79,7 +75,6 @@ export class Renderer {
                 object.draw(context, this.lastRenderState)
                 context.restore();
             }
-            //console.log(renderList)
         }
 
     }

@@ -4,7 +4,7 @@ import { Mat4 } from "/lib/square_matrix_math.js"
 //
 
 export class Camera {
-    transformation = Mat4.identity();
+    transform = Mat4.identity();
     projection = Mat4.identity();
     viewportMatrix = Mat4.identity();
     #viewport
@@ -21,12 +21,12 @@ export class Camera {
         Mat4.setScale(this.viewportMatrix, width * 0.5, height * 0.5, 1)
         Mat4.setPosition(this.viewportMatrix, width * 0.5, height * 0.5, 0)
     }
-    //NOTE: zoom happens in the transformation (its scale)
+    //NOTE: zoom happens in the transform (its scale)
     getPosition(targetVector = new Float32Array(3)) {
-        return Mat4.getPosition(this.transformation, targetVector)
+        return Mat4.getPosition(this.transform, targetVector)
     }
     setPosition(x = 0.0, y = 0.0, z = 0.0) {
-        Mat4.setPosition(this.transformation, -x, -y, -z)
+        Mat4.setPosition(this.transform, -x, -y, -z)
     }
     constructor(viewport) {
         this.viewport = viewport
